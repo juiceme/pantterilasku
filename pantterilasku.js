@@ -43,8 +43,9 @@ wsServer.on('request', function(request) {
 
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-//            var sendable = {type:2, content:globalMyWords};
 	    var sendable = {type:2, content:customerNames};
+            connection.send(JSON.stringify(sendable));
+	    var sendable = {type:3, content:invoiceData};
             connection.send(JSON.stringify(sendable));
         }
     });

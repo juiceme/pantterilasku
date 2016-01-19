@@ -22,17 +22,24 @@
     var receivable = JSON.parse(event.data);
     if(receivable.type == "1") {
       document.getElementById("myTextField").value = receivable.content;
-    } else {
+    } else if(receivable.type == "2") {
+
 	console.log(receivable.type);
 	console.log(receivable.content);
-	document.body.appendChild(createTable(receivable.content));
+	document.body.appendChild(createTable1(receivable.content));
 
 //      if(firstAccess === 0) {
 //        firstAccess = 1;
-//        document.body.appendChild(createTable(receivable.content));
+//        document.body.appendChild(createTable1(receivable.content));
 //      } else {
-//        document.body.replaceChild(createTable(receivable.content), document.getElementById("myWordTable"));
+//        document.body.replaceChild(createTable1(receivable.content), document.getElementById("myCustomerTable"));
 //      }
+    } else if(receivable.type == "3") {
+
+	console.log(receivable.type);
+	console.log(receivable.content);
+	document.body.appendChild(createTable2(receivable.content));
+
     }
   }
 
@@ -44,10 +51,10 @@
 
 <script language="javascript" type="text/javascript">
 
-function createTable(tableData) {
+function createTable1(tableData) {
     var table = document.createElement('table');
     var tableBody = document.createElement('tbody');
-    table.id = "myWordTable";
+    table.id = "myCustomerTable";
 
     tableData.forEach(function(name) {
 	console.log(name);
@@ -64,6 +71,35 @@ function createTable(tableData) {
 	cell2.appendChild(checkbox);
 
 	row.appendChild(cell2);
+	tableBody.appendChild(row);
+    });
+
+    table.appendChild(tableBody);
+
+    return table;
+}
+
+function createTable2(tableData) {
+    var table = document.createElement('table');
+    var tableBody = document.createElement('tbody');
+    table.id = "myInvoiceTable";
+
+    tableData.rivit.forEach(function(name) {
+	console.log(name);
+	var row = document.createElement('tr');
+	var cell1 = document.createElement('td');
+	cell1.appendChild(document.createTextNode(name.description));
+	row.appendChild(cell1);
+	var cell2 = document.createElement('td');
+	cell2.appendChild(document.createTextNode(name.n));
+	row.appendChild(cell2);
+	var cell3 = document.createElement('td');
+	cell3.appendChild(document.createTextNode(name.price));
+	row.appendChild(cell3);
+	var cell4 = document.createElement('td');
+	cell4.appendChild(document.createTextNode(name.vat));
+	row.appendChild(cell4);
+
 	tableBody.appendChild(row);
     });
 
