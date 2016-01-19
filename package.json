@@ -23,6 +23,7 @@
   "devDependencies": {
   },
   "dependencies": {
+    "websocket": ">=1.0.22",
     "pdfkit": ">=0.7.2"
   },
   "scripts": {
