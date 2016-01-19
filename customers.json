@@ -1,0 +1,10 @@
+{
+    "customers" : [
+	{ "name" : "Adam Arnoldson",     "email" : "aa@example.com", "reference" : "667 66567 75081 50171", "team" : "black" },
+	{ "name" : "Bartholomeus Black", "email" : "bb@example.com", "reference" : "667 66567 75081 50058", "team" : "black" },
+	{ "name" : "Cecil Conan",        "email" : "cc@example.com", "reference" : "667 66567 75081 50265", "team" : "black" },
+	{ "name" : "Daniel Doe",         "email" : "dd@example.com", "reference" : "726 58277 65091 50189", "team" : "grey" },
+	{ "name" : "Enoch Ervidsson",    "email" : "ee@example.com", "reference" : "726 58277 65091 50202", "team" : "grey" },
+	{ "name" : "Franciscus Farseer", "email" : "ff@example.com", "reference" : "726 58277 65091 50244", "team" : "grey" } ]
+}
+
