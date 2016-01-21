@@ -14,7 +14,9 @@ try {
 var pdfprinter = require("./pdfprinter");
 var filename = "panthers.pdf";
 var globalConnectionList = [];
-var customerNames = customerData.customers.map(function(s) { return s.name; });
+var clientSendable = { customers : customerData.customers.map(function(s) { return s.name; }),
+		       invoices  : invoiceData.rivit,
+		       company   : companyData.company };
 
 function servePage(content) {
     http.createServer(function(request,response){
@@ -43,9 +45,7 @@ wsServer.on('request', function(request) {
 
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-	    var sendable = {type:2, content:customerNames};
-            connection.send(JSON.stringify(sendable));
-	    var sendable = {type:3, content:invoiceData};
+	    var sendable = {type:"invoiceData", content:clientSendable};
             connection.send(JSON.stringify(sendable));
         }
     });
