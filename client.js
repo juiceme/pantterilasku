@@ -34,8 +34,6 @@
       document.getElementById("myStatusField").value = receivable.content;
     }
     if(receivable.type == "invoiceData") {
-//      console.log(receivable.type);
-//      console.log(receivable.content);
       customerArray = receivable.content.customers;
       invoiceArray = receivable.content.invoices;
 
@@ -81,7 +79,7 @@ function createCustomerTable() {
     }
 	
     customerArray.forEach(function(s) {
-	clientCount = clientCount + 1;
+	clientCount++;
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
 	cell0.appendChild(document.createTextNode(s.name));
@@ -95,7 +93,7 @@ function createCustomerTable() {
 	    var cellN = document.createElement('td');
 	    var checkbox = document.createElement('input');
 	    checkbox.type = "checkbox";
-	    checkbox.name = "cb_" + clientCount + "_" + i;
+	    checkbox.id = "cb_" + clientCount + "_" + i;
 	    checkbox.value = "0"
 	    cellN.appendChild(checkbox);
 	    row.appendChild(cellN);
@@ -122,26 +120,6 @@ function createCustomerTable() {
     return table;
 }
 
-function getPreviewPdf(s) {
-    console.log("clicked preview : " + s);
-
-    var i = 0;
-    while (i < invoiceArray.length) {
-	console.log("baa");
-	i++;
-    }
-
-// "cb_" + clientCount + "_" + i;
-
-    var sendable = {type:"getPdfPreview", client:s};
-    mySocket.send(JSON.stringify(sendable));
-    return false;
-}
-
-function sendAllInvoices() {
-    alert("WTF!");
-}
-
 function createInvoiceTable() {
     var table = document.createElement('table');
     var tableHeader = document.createElement('thead');
@@ -154,7 +132,6 @@ function createInvoiceTable() {
 
     var count = 1;
     invoiceArray.forEach(function(name) {
-	console.log(name);
 	var row = document.createElement('tr');
 	var cell1 = document.createElement('td');
 	cell1.appendChild(document.createTextNode(count));
@@ -178,6 +155,50 @@ function createInvoiceTable() {
     table.appendChild(tableBody);
 
     return table;
+}
+
+function getPreviewPdf(s) {
+    var selectedInvoices = [];
+
+    var i = 0;
+    while(i < invoiceArray.length) {
+	var checkBox = "cb_" + s + "_" + i;
+	if(document.getElementById(checkBox).checked == true) {
+	    selectedInvoices.push(i+1);
+	}
+	i++;
+    }
+
+    var sendable = {type:"getPdfPreview", client:s, invoices:selectedInvoices};
+    mySocket.send(JSON.stringify(sendable));
+    return false;
+}
+
+function sendAllInvoices() {
+    var invoices = [];
+
+    var i = 0;
+    customerArray.forEach(function(s) {
+	i++;
+	var customer = { id:i, invoices: [] };
+	var j = 0;
+	while(j < invoiceArray.length) {
+	    var checkBox = "cb_" + i + "_" + j;
+	    if(document.getElementById(checkBox).checked == true) {
+		customer.invoices.push(j+1);
+	    }
+	    j++;
+	}
+	invoices.push(customer);
+    });
+
+    console.log(JSON.stringify(invoices));
+    if (confirm('Are you sure you want to bulk email invoices?')) {
+	var sendable = {type:"sendInvoices", invoices:invoices};
+	mySocket.send(JSON.stringify(sendable));
+    } else {
+	// Do nothing!
+    }
 }
 
 </script>

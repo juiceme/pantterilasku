@@ -65,8 +65,16 @@ wsServer.on('request', function(request) {
 		connection.send(JSON.stringify(sendable));
             }
 	    if (receivable.type == "getPdfPreview") {
-		servicelog("Client #" + index + " requestes PDF preview " + receivable.client);
+		servicelog("Client #" + index + " requestes PDF preview " + receivable.client +
+			   " [" +  receivable.invoices + "]");
 		var sendable = {type:"statusData", content: "Prnting preview"};
+		connection.send(JSON.stringify(sendable));
+
+            }
+	    if (receivable.type == "sendInvoices") {
+		servicelog("Client #" + index + " requestes bulk mailing" +
+			   " [" +  JSON.stringify(receivable.invoices) + "]");
+		var sendable = {type:"statusData", content: "Sending email"};
 		connection.send(JSON.stringify(sendable));
 
             }
