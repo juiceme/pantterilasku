@@ -1,5 +1,5 @@
 {
-    "rivit" : [
+    "rows" : [
 	{ "description" : "Mömmöjä koko rahalla", "n" : "3",  "price" : "80.05", "vat"   : "0.0" },
 	{ "description" : "Kamaa ja Sälää",  "n" : "1",  "price" : "11.40", "vat"   : "22.0" },
 	{ "description" : "Tilppeitä, krumeluureja ja pulju vasenkätisellä kierteellä", "n" : "7", "price" : "19.90",  "vat"   : "16.5" },

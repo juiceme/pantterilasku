@@ -79,7 +79,6 @@ function createCustomerTable() {
     }
 	
     customerArray.forEach(function(s) {
-	clientCount++;
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
 	cell0.appendChild(document.createTextNode(s.name));
@@ -110,8 +109,8 @@ function createCustomerTable() {
 	previewLink.href = "#";
 	cellP.appendChild(previewLink);
 	row.appendChild(cellP);
-
 	tableBody.appendChild(row);
+	clientCount++;
     });
 
     table.appendChild(tableHeader);
@@ -164,7 +163,7 @@ function getPreviewPdf(s) {
     while(i < invoiceArray.length) {
 	var checkBox = "cb_" + s + "_" + i;
 	if(document.getElementById(checkBox).checked == true) {
-	    selectedInvoices.push(i+1);
+	    selectedInvoices.push(i);
 	}
 	i++;
     }
@@ -179,7 +178,6 @@ function sendAllInvoices() {
 
     var i = 0;
     customerArray.forEach(function(s) {
-	i++;
 	var customer = { id:i, invoices: [] };
 	var j = 0;
 	while(j < invoiceArray.length) {
@@ -190,6 +188,7 @@ function sendAllInvoices() {
 	    j++;
 	}
 	invoices.push(customer);
+	i++;
     });
 
     console.log(JSON.stringify(invoices));

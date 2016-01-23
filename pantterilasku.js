@@ -3,7 +3,6 @@ var http = require("http");
 var fs = require("fs");
 var emailjs = require("emailjs");
 var pdfprinter = require("./pdfprinter");
-var filename = "panthers.pdf";
 var globalConnectionList = [];
 
 function getFileData() {
@@ -17,7 +16,7 @@ function getFileData() {
     }
 
     return { customers : customerData.customers.map(function(s) { return ({ name: s.name, team: s.team }) ; }),
-	     invoices  : invoiceData.rivit,
+	     invoices  : invoiceData.rows,
 	     company   : companyData.company };
 }
 
@@ -59,7 +58,7 @@ wsServer.on('request', function(request) {
             if(receivable.type == "clientStarted") {
 		var clientSendable = getFileData();
 		servicelog("Sending initial data to client #" + index);
-		sendable = {type:"statusData", content: "hippaheikin laiva on bullaa ja woita!"};
+		sendable = {type:"statusData", content: "Forms are up to date"};
 		connection.send(JSON.stringify(sendable));
 		sendable = {type:"invoiceData", content:clientSendable};
 		connection.send(JSON.stringify(sendable));
@@ -69,7 +68,12 @@ wsServer.on('request', function(request) {
 			   " [" +  receivable.invoices + "]");
 		var sendable = {type:"statusData", content: "Prnting preview"};
 		connection.send(JSON.stringify(sendable));
-
+		if(printPreview(receivable.client, receivable.invoices) != null) {
+		    var sendable = {type:"statusData", content: "OK"};
+		} else {
+		    var sendable = {type:"statusData", content: "No preview available"};
+		}
+		connection.send(JSON.stringify(sendable));
             }
 	    if (receivable.type == "sendInvoices") {
 		servicelog("Client #" + index + " requestes bulk mailing" +
@@ -88,6 +92,54 @@ wsServer.on('request', function(request) {
 
 });
 
+function getNiceDate(date) {
+    return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
+}
+
+function printPreview(client, selectedInvoices)
+{
+    var customerData = JSON.parse(fs.readFileSync("customers.json"));
+    var companyData = JSON.parse(fs.readFileSync("company.json"));
+    var invoiceData = JSON.parse(fs.readFileSync("invoices.json"));
+    var filename = "./temp/preview.pdf";
+    var now = new Date();
+
+    var invoice = invoiceData.rows.map(function(a,b) {
+	if(selectedInvoices.indexOf(b) > -1) { return a; }
+    }).filter(function(s){ return s; });
+
+    if(invoice.length == 0) {
+	console.log("Invoice is empty");
+	return null;
+    }
+ 
+    var company = companyData.company.map(function(s) {
+	if(s.id === customerData.customers[client].team) { return s }
+    }).filter(function(s){ return s; })[0];
+
+    var bill = { company: company.name,
+		 bankName: company.bankName,
+		 bic: company.bic,
+		 iban: company.iban,
+		 customer: customerData.customers[client].name,
+		 reference: customerData.customers[client].reference,
+		 date: getNiceDate(now),
+		 number: "",
+		 id: "",
+		 intrest: "",
+		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
+		 notice: ""
+	       }
+
+    pdfprinter.printSheet(filename, bill, invoice);
+
+    servicelog("Created PDF preview document");
+    return filename;
+}
+
+
+if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
+if (!fs.existsSync("./invoices/")){ fs.mkdirSync("./invoices/"); }
+
 serveClientPage();
 
-//pdfprinter.printSheet(filename, lasku, kamat);

@@ -66,16 +66,16 @@ function printHeader(doc, bill) {
 function printItemList(doc, itemList) {
     var yposition = itemListStartYValue;
     // loop thru the product array
-    itemList.rivit.forEach( function(s) {
-	var hinta = parseInt(s.n) * parseFloat(s.hinta);
-	var alvhinta = hinta + hinta * parseFloat(s.alv) / 100;
+    itemList.forEach( function(s) {
+	var price = parseInt(s.n) * parseFloat(s.price);
+	var vatPrice = price + price * parseFloat(s.vat) / 100;
 	doc.fontSize(8)
-	    .text(s.tuote, 65, yposition)
+	    .text(s.description, 65, yposition)
 	    .text(s.n, 344, yposition)
 	    .text("kpl", 373, yposition)
-	    .text(s.hinta, 415, yposition)
-	    .text(s.alv, 493, yposition)
-	    .text(alvhinta.toFixed(2), 530, yposition);
+	    .text(s.price, 415, yposition)
+	    .text(s.vat, 493, yposition)
+	    .text(vatPrice.toFixed(2), 530, yposition);
 	yposition = yposition + 12;
     });
 }
@@ -154,13 +154,11 @@ function printSheet(filename, billData, itemList) {
     printItemList(doc, itemList);
 
     // Draw the totals bar
-    var totalNoVat = itemList.rivit
-	.map(function(s){return(parseInt(s.n)*parseFloat(s.hinta))})
+    var totalNoVat = itemList.map(function(s){return(parseInt(s.n)*parseFloat(s.price))})
 	.reduce(function(a, b){return a + b;});
-    var totalVat = itemList.rivit
-	.map(function(s){return(parseInt(s.n)*parseFloat(s.hinta)*parseFloat(s.alv)/100)})
+    var totalVat = itemList.map(function(s){return(parseInt(s.n)*parseFloat(s.price)*parseFloat(s.vat)/100)})
 	.reduce(function(a, b){return a + b;});
-    printTotalsBar(doc, itemList.rivit.length, billData.reference, totalNoVat, totalVat);
+    printTotalsBar(doc, itemList.length, billData.reference, totalNoVat, totalVat);
 
     // Draw the footer
     printFooter(doc, billData, (totalNoVat + totalVat));
