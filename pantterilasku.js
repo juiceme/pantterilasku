@@ -1,6 +1,10 @@
 var websocket = require("websocket");
 var http = require("http");
 var fs = require("fs");
+var emailjs = require("emailjs");
+var pdfprinter = require("./pdfprinter");
+var filename = "panthers.pdf";
+var globalConnectionList = [];
 
 function getFileData() {
     try {
@@ -20,10 +24,6 @@ function getFileData() {
 function servicelog(s) {
     console.log((new Date()) + " --- " + s);
 }
-
-var pdfprinter = require("./pdfprinter");
-var filename = "panthers.pdf";
-var globalConnectionList = [];
 
 function serveClientPage() {
     http.createServer(function(request,response){
