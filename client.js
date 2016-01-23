@@ -100,6 +100,8 @@ function createTable1(tableData, invoiceRows) {
 
 function getPreviewPdf(s) {
     console.log("clicked preview : " + s);
+    var sendable = {type:"getPdfPreview", content:s};
+    mySocket.send(JSON.stringify(sendable));
     return false;
 }
 

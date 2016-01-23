@@ -45,8 +45,14 @@ wsServer.on('request', function(request) {
 
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
-	    var sendable = {type:"invoiceData", content:clientSendable};
-            connection.send(JSON.stringify(sendable));
+	    console.log(JSON.parse(message));
+            var receivable = JSON.parse(message.data);
+            if(receivable.type == "getPdfPreview") {
+               console.log(receivable.content);
+            } else {
+	       var sendable = {type:"invoiceData", content:clientSendable};
+               connection.send(JSON.stringify(sendable));
+            }
         }
     });
 
