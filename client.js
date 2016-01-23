@@ -36,20 +36,17 @@
     if(receivable.type == "invoiceData") {
       customerArray = receivable.content.customers;
       invoiceArray = receivable.content.invoices;
-
       document.body.replaceChild(createCustomerTable(),
 				 document.getElementById("myCustomerTable"));
-
       document.body.replaceChild(createInvoiceTable(),
 				 document.getElementById("myInvoiceTable"));
-
-
-    } else if(receivable.type == "3") {
-
+    }
+    if(receivable.type == "pdfUpload") {
 	console.log(receivable.type);
 	console.log(receivable.content);
-	document.body.appendChild(createInvoiceTable(receivable.content));
-
+	pdfData = JSON.parse(receivable.content).data;
+	console.log(pdfData)
+	window.open("data:application/pdf," + pdfData); 
     }
   }
 

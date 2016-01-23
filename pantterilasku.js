@@ -68,12 +68,20 @@ wsServer.on('request', function(request) {
 			   " [" +  receivable.invoices + "]");
 		var sendable = {type:"statusData", content: "Prnting preview"};
 		connection.send(JSON.stringify(sendable));
-		if(printPreview(receivable.client, receivable.invoices) != null) {
+		filename = printPreview(receivable.client, receivable.invoices);
+		if(filename != null) {
+		    console.log(filename);
 		    var sendable = {type:"statusData", content: "OK"};
+		    connection.send(JSON.stringify(sendable));
+		    fii = fs.readFileSync(filename);
+		    console.log(fii.length);
+		    var sendable = {type:"pdfUpload", content: fii};
+//		    connection.send(JSON.stringify(sendable));
+		    console.log(JSON.stringify(sendable.content.data));
 		} else {
 		    var sendable = {type:"statusData", content: "No preview available"};
+		    connection.send(JSON.stringify(sendable));
 		}
-		connection.send(JSON.stringify(sendable));
             }
 	    if (receivable.type == "sendInvoices") {
 		servicelog("Client #" + index + " requestes bulk mailing" +
