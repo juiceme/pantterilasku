@@ -1,9 +1,22 @@
 var websocket = require("websocket");
 var http = require("http");
 var fs = require("fs");
-var emailjs = require("emailjs");
+var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
 var globalConnectionList = [];
+
+try {
+    var emailData = JSON.parse(fs.readFileSync("email.json"));
+    var emailConnection = email.server.connect({
+	user: emailData.user,
+	password: emailData.password,
+	host: emailData.host,
+	ssl: emailData.ssl
+    });
+} catch (err) {
+    console.log(err.message);
+    process.exit(1);
+}
 
 function getFileData() {
     try {
@@ -114,9 +127,21 @@ function pushPreviewToClient(connection, dummy, filename) {
 }
 
 function sendEmail(connection, details, filename) {
-    console.log(filename);
-    console.log(details);
-    setStatustoClient(connection, "Naakka istui orrella: " + filename);
+    setStatustoClient(connection, "Sending email: " + details.sentCount);
+    emailConnection.send({
+	text:    details.text,
+	from:    emailData.sender,
+	to:      details.address,
+	subject: details.subject,
+	attachment: [{ path: filename, type:"application/pdf", name: details.filename }]
+    }, function(err, message) {
+	if(err) {
+	    console.log(err || message);
+	    setStatustoClient(connection, "Failed sending email: " + details.sentCount);
+	} else {
+	    setStatustoClient(connection, "Sent email: " + details.sentCount);
+	}
+    });
 }
 
 function printPreview(callback, connection, customer, selectedInvoices)
@@ -165,6 +190,7 @@ function sendBulkEmail(connection, allInvoices) {
     var invoiceData = JSON.parse(fs.readFileSync("invoices.json"));
     var now = new Date();
     var billNumber = getniceDateTime(now);
+    var customerCount = 0;
 
     if(allInvoices.length === 0) {
 	servicelog("Invoice empty, not emailing PDF documents");
@@ -173,6 +199,7 @@ function sendBulkEmail(connection, allInvoices) {
     }
 
     allInvoices.forEach(function(currentCustomer) {
+	customerCount++;
 	var customer = customerData.customers.map(function(a, b) {
 	    if(currentCustomer.id === b) { return a; }
 	}).filter(function(s){ return s; })[0];
@@ -200,9 +227,10 @@ function sendBulkEmail(connection, allInvoices) {
 	var filename = "./temp/" + customer.name.replace(" ", "_") + "_" + billNumber + ".pdf";
 	var emailDetails = { address: customer.email,
 			     subject: "Uusi lasku " + company.name + " / " + billNumber,
-			     text: "Tässä uusi lasku."
+			     text: "Tässä uusi lasku.",
+			     filename: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf",
+			     sentCount: customerCount
 			   }
-			     
 
 	pdfprinter.printSheet(sendEmail, connection, emailDetails, filename, bill, invoiceRows);
 	servicelog("Sent PDF emails");
@@ -212,6 +240,8 @@ function sendBulkEmail(connection, allInvoices) {
 
 if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
 if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 serveClientPage();
 
