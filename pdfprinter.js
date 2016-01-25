@@ -134,7 +134,7 @@ function printFooter(doc, bill, total) {
 	doc.text("TILISIIRTO", 26, 715);
 }
 
-function printSheet(filename, billData, itemList) {
+function printSheet(callback, connection, client, filename, billData, itemList) {
     // Create the document
     var doc = new PDFDocument({	size: "a4",
 				layout: "portrait",
@@ -142,7 +142,8 @@ function printSheet(filename, billData, itemList) {
 
     // Pipe it's output somewhere, like to a file or HTTP response
     // See below for browser usage
-    doc.pipe(fs.createWriteStream(filename));
+    var writeStream = fs.createWriteStream(filename);
+    doc.pipe(writeStream);
 
     // Draw the header part of the bill
     printHeader(doc, billData);
@@ -165,6 +166,11 @@ function printSheet(filename, billData, itemList) {
 
     // Finalize PDF file
     doc.end()
+
+    // wait for the document to finish before returning...
+    writeStream.on('finish', function () {
+	callback(connection, filename);
+    });
 }
 
 exports.printSheet = printSheet;

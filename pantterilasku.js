@@ -58,36 +58,20 @@ wsServer.on('request', function(request) {
             if(receivable.type == "clientStarted") {
 		var clientSendable = getFileData();
 		servicelog("Sending initial data to client #" + index);
-		sendable = {type:"statusData", content: "Forms are up to date"};
-		connection.send(JSON.stringify(sendable));
+		setStatustoClient(connection, "Forms are up to date");
 		sendable = {type:"invoiceData", content:clientSendable};
 		connection.send(JSON.stringify(sendable));
             }
 	    if (receivable.type == "getPdfPreview") {
 		servicelog("Client #" + index + " requestes PDF preview " + receivable.client +
 			   " [" +  receivable.invoices + "]");
-		var sendable = {type:"statusData", content: "Prnting preview"};
-		connection.send(JSON.stringify(sendable));
-		filename = printPreview(receivable.client, receivable.invoices);
-		if(filename != null) {
-		    console.log(filename);
-		    var sendable = {type:"statusData", content: "OK"};
-		    connection.send(JSON.stringify(sendable));
-		    fii = fs.readFileSync(filename);
-		    console.log(fii.length);
-		    var sendable = {type:"pdfUpload", content: fii};
-//		    connection.send(JSON.stringify(sendable));
-		    console.log(JSON.stringify(sendable.content.data));
-		} else {
-		    var sendable = {type:"statusData", content: "No preview available"};
-		    connection.send(JSON.stringify(sendable));
-		}
+		setStatustoClient(connection, "Printing preview");
+		printPreview(pushPreviewToClient, connection, receivable.client, receivable.invoices);
             }
 	    if (receivable.type == "sendInvoices") {
 		servicelog("Client #" + index + " requestes bulk mailing" +
 			   " [" +  JSON.stringify(receivable.invoices) + "]");
-		var sendable = {type:"statusData", content: "Sending email"};
-		connection.send(JSON.stringify(sendable));
+		setStatustoClient(connection, "Sending email");
 
             }
         }
@@ -100,11 +84,30 @@ wsServer.on('request', function(request) {
 
 });
 
+function setStatustoClient(connection, status) {
+    var sendable = {type:"statusData", content:status};
+    connection.send(JSON.stringify(sendable));
+}
+
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
 }
 
-function printPreview(client, selectedInvoices)
+function pushPreviewToClient(connection, filename) {
+    if(filename == null) {
+	setStatustoClient(connection, "No preview available");
+	return;
+    }
+
+    fii = fs.readFileSync(filename);
+    var sendable = {type:"pdfUpload", content: fii.toString('base64')};
+    connection.send(JSON.stringify(sendable));
+
+    setStatustoClient(connection, "OK");
+
+}
+
+function printPreview(callback, connection, client, selectedInvoices)
 {
     var customerData = JSON.parse(fs.readFileSync("customers.json"));
     var companyData = JSON.parse(fs.readFileSync("company.json"));
@@ -139,10 +142,7 @@ function printPreview(client, selectedInvoices)
 		 notice: ""
 	       }
 
-    pdfprinter.printSheet(filename, bill, invoice);
-
-    servicelog("Created PDF preview document");
-    return filename;
+    pdfprinter.printSheet(callback, connection, client, filename, bill, invoice);
 }
 
 

@@ -42,11 +42,8 @@
 				 document.getElementById("myInvoiceTable"));
     }
     if(receivable.type == "pdfUpload") {
-	console.log(receivable.type);
-	console.log(receivable.content);
-	pdfData = JSON.parse(receivable.content).data;
-	console.log(pdfData)
-	window.open("data:application/pdf," + pdfData); 
+	pdfData = atob(receivable.content);
+	window.open("data:application/pdf," + escape(pdfData)); 
     }
   }
 
@@ -167,6 +164,7 @@ function getPreviewPdf(s) {
 
     var sendable = {type:"getPdfPreview", client:s, invoices:selectedInvoices};
     mySocket.send(JSON.stringify(sendable));
+
     return false;
 }
 
