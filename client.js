@@ -162,7 +162,7 @@ function getPreviewPdf(s) {
 	i++;
     }
 
-    var sendable = {type:"getPdfPreview", client:s, invoices:selectedInvoices};
+    var sendable = {type:"getPdfPreview", customer:s, invoices:selectedInvoices};
     mySocket.send(JSON.stringify(sendable));
 
     return false;
@@ -175,14 +175,16 @@ function sendAllInvoices() {
     customerArray.forEach(function(s) {
 	var customer = { id:i, invoices: [] };
 	var j = 0;
+	var invoiceExists = false;
 	while(j < invoiceArray.length) {
 	    var checkBox = "cb_" + i + "_" + j;
 	    if(document.getElementById(checkBox).checked == true) {
+		invoiceExists = true;
 		customer.invoices.push(j+1);
 	    }
 	    j++;
 	}
-	invoices.push(customer);
+	if(invoiceExists) { invoices.push(customer); }
 	i++;
     });
 
