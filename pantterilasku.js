@@ -6,7 +6,7 @@ var pdfprinter = require("./pdfprinter");
 var globalConnectionList = [];
 
 try {
-    var emailData = JSON.parse(fs.readFileSync("email.json"));
+    var emailData = JSON.parse(fs.readFileSync("./configuration/email.json"));
     var emailConnection = email.server.connect({
 	user: emailData.user,
 	password: emailData.password,
@@ -20,9 +20,9 @@ try {
 
 function getFileData() {
     try {
-	var customerData = JSON.parse(fs.readFileSync("customers.json"));
-	var invoiceData = JSON.parse(fs.readFileSync("invoices.json"));
-	var companyData = JSON.parse(fs.readFileSync("company.json"));
+	var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
+	var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
+	var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
     } catch (err) {
 	console.log(err.message);
 	process.exit(1);
@@ -146,9 +146,9 @@ function sendEmail(connection, details, filename) {
 
 function printPreview(callback, connection, customer, selectedInvoices)
 {
-    var customerData = JSON.parse(fs.readFileSync("customers.json"));
-    var companyData = JSON.parse(fs.readFileSync("company.json"));
-    var invoiceData = JSON.parse(fs.readFileSync("invoices.json"));
+    var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
+    var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
+    var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
@@ -185,9 +185,9 @@ function printPreview(callback, connection, customer, selectedInvoices)
 }
 
 function sendBulkEmail(connection, allInvoices) {
-    var customerData = JSON.parse(fs.readFileSync("customers.json"));
-    var companyData = JSON.parse(fs.readFileSync("company.json"));
-    var invoiceData = JSON.parse(fs.readFileSync("invoices.json"));
+    var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
+    var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
+    var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var customerCount = 0;
