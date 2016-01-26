@@ -55,7 +55,7 @@ function createCustomerTable() {
     table.id = "myCustomerTable";
 
     var hRow0 = tableHeader.insertRow(0);    
-    var hRow1 = tableHeader.insertRow(1);    
+    var hRow1 = tableHeader.insertRow(1);        
     var hCell0 = hRow0.insertCell(0);
     var hCell1 = hRow0.insertCell(1);
     var hCell2 = hRow1.insertCell(0);
@@ -69,6 +69,12 @@ function createCustomerTable() {
     while(i < (invoiceArray.length)) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
+	var checkbox = document.createElement('input');
+	checkbox.type = "checkbox";
+	checkbox.id = i;
+	checkbox.value = "0"
+	checkbox.onclick = function() { toggleAllBoxes(checkbox.id); }
+	hCellN.appendChild(checkbox);
 	i++;
     }
 	
@@ -148,6 +154,10 @@ function createInvoiceTable() {
     table.appendChild(tableBody);
 
     return table;
+}
+
+function  toggleAllBoxes(s) {
+    console.log(s);
 }
 
 function getPreviewPdf(s) {
