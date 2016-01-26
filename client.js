@@ -66,18 +66,21 @@ function createCustomerTable() {
     hCell1.innerHTML = "<b>Invoices</b>";
 
     var i = 0;
-    while(i < (invoiceArray.length)) {
+    invoiceArray.forEach(function(s) {
+
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
-	var checkbox = document.createElement('input');
-	checkbox.type = "checkbox";
-	checkbox.id = i;
-	checkbox.value = "0"
-	checkbox.onclick = function() { toggleAllBoxes(checkbox.id); }
-	hCellN.appendChild(checkbox);
+	var checkBox = document.createElement('input');
+	checkBox.type = "checkbox";
+	checkBox.id = i;
+	checkBox.value = "0"
+	checkBox.onclick = function() { toggleAllBoxes(checkBox.id,
+						       document.getElementById(checkBox.id).checked);
+				      }
+	hCellN.appendChild(checkBox);
 	i++;
-    }
-	
+    });
+
     customerArray.forEach(function(s) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -156,8 +159,14 @@ function createInvoiceTable() {
     return table;
 }
 
-function  toggleAllBoxes(s) {
-    console.log(s);
+function toggleAllBoxes(index, state) {
+    var i=0;
+    customerArray.forEach(function(s) {
+	var checkBox = "cb_" + i + "_" + index;
+	document.getElementById(checkBox).checked = state;
+	i++;
+    });
+    return false;
 }
 
 function getPreviewPdf(s) {
@@ -198,7 +207,6 @@ function sendAllInvoices() {
 	i++;
     });
 
-    console.log(JSON.stringify(invoices));
     if (confirm('Are you sure you want to bulk email invoices?')) {
 	var sendable = {type:"sendInvoices", invoices:invoices};
 	mySocket.send(JSON.stringify(sendable));
