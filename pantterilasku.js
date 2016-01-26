@@ -28,11 +28,11 @@ function getFileData() {
 	process.exit(1);
     }
 
-    return { customers : customerData.customers.map(function(s) {
+    return { customers : customerData.map(function(s) {
 	return ({ name: s.name, team: s.team });
     }),
-	     invoices  : invoiceData.rows,
-	     company   : companyData.company };
+	     invoices  : invoiceData,
+	     company   : companyData };
 }
 
 function servicelog(s) {
@@ -152,7 +152,7 @@ function printPreview(callback, connection, customer, selectedInvoices)
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
-    var invoice = invoiceData.rows.map(function(a,b) {
+    var invoice = invoiceData.map(function(a,b) {
 	if(selectedInvoices.indexOf(b) > -1) { return a; }
     }).filter(function(s){ return s; });
 
@@ -162,16 +162,16 @@ function printPreview(callback, connection, customer, selectedInvoices)
 	return null;
     }
  
-    var company = companyData.company.map(function(s) {
-	if(s.id === customerData.customers[customer].team) { return s }
+    var company = companyData.map(function(s) {
+	if(s.id === customerData[customer].team) { return s }
     }).filter(function(s){ return s; })[0];
 
     var bill = { company: company.name,
 		 bankName: company.bankName,
 		 bic: company.bic,
 		 iban: company.iban,
-		 customer: customerData.customers[customer].name,
-		 reference: customerData.customers[customer].reference,
+		 customer: customerData[customer].name,
+		 reference: customerData[customer].reference,
 		 date: getNiceDate(now),
 		 number: "",
 		 id: "",
@@ -200,13 +200,13 @@ function sendBulkEmail(connection, allInvoices) {
 
     allInvoices.forEach(function(currentCustomer) {
 	customerCount++;
-	var customer = customerData.customers.map(function(a, b) {
+	var customer = customerData.map(function(a, b) {
 	    if(currentCustomer.id === b) { return a; }
 	}).filter(function(s){ return s; })[0];
-	var invoiceRows = invoiceData.rows.map(function(a, b) {
+	var invoiceRows = invoiceData.map(function(a, b) {
 	    if(currentCustomer.invoices.indexOf(b+1) > -1) { return a; }
 	}).filter(function(s){ return s; });
-	var company = companyData.company.map(function(s) {
+	var company = companyData.map(function(s) {
 	    if(s.id === customer.team) { return s }
 	}).filter(function(s){ return s; })[0];
 

@@ -1,14 +1,15 @@
-{
-	"company" : [
-    	{       "id"         : "black",
-		"name"       : "Panthers Black",
-    		"bankName"   : "Bank xxx",
-    		"iban"       : "FI00 1234 5678 9012 34",
-    		"bic"        : "xxxxFIHH" },
-    	{       "id"         : "grey",
-                "name"       : "Panthers Harmaat",
-                "bankName"   : "Bank xxx",
-                "iban"       : "FI00 1234 5678 9012 34",
-                "bic"        : "xxxxFIHH" } ]
-}
+[
+    {
+	"id"         : "black",
+	"name"       : "Panthers Black",
+	"bankName"   : "Bank xxx",
+	"iban"       : "FI00 1234 5678 9012 34",
+	"bic"        : "xxxxFIHH" },
+    {
+	"id"         : "grey",
+	"name"       : "Panthers Harmaat",
+	"bankName"   : "Bank xxx",
+	"iban"       : "FI00 1234 5678 9012 34",
+	"bic"        : "xxxxFIHH" }
+]
 

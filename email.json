@@ -1,7 +1,7 @@
 {
-	"host" : "smtp.your-email.com",
-	"user" : "username",
-	"password" : "password",
-	"sender" : "you <username@your-email.com>",
-	"ssl" : true
+    "host" : "smtp.your-email.com",
+    "user" : "username",
+    "password" : "password",
+    "sender" : "you <username@your-email.com>",
+    "ssl" : true
 }
