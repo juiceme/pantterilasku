@@ -3,7 +3,9 @@ var http = require("http");
 var fs = require("fs");
 var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
+var path = require("path")
 var globalConnectionList = [];
+var globalSentMailList = [];
 
 try {
     var emailData = JSON.parse(fs.readFileSync("./configuration/email.json"));
@@ -84,6 +86,7 @@ wsServer.on('request', function(request) {
 		printPreview(pushPreviewToClient, connection, receivable.customer, receivable.invoices);
             }
 	    if (receivable.type == "sendInvoices") {
+		globalSentMailList = [];
 		servicelog("Client #" + index + " requestes bulk mailing" +
 			   " [" +  JSON.stringify(receivable.invoices) + "]");
 		setStatustoClient(connection, "Sending email");
@@ -137,8 +140,12 @@ function sendEmail(connection, details, filename) {
     }, function(err, message) {
 	if(err) {
 	    console.log(err || message);
+	    globalSentMailList.push({failed: filename});
+	    fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
 	    setStatustoClient(connection, "Failed sending email: " + details.sentCount);
 	} else {
+	    globalSentMailList.push({passed: filename});
+	    fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
 	    setStatustoClient(connection, "Sent email: " + details.sentCount);
 	}
     });
@@ -240,6 +247,7 @@ function sendBulkEmail(connection, allInvoices) {
 
 if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
 if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
+if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
