@@ -30,8 +30,20 @@
 
   mySocket.onmessage = function (event) {
     var receivable = JSON.parse(event.data);
+      console.log(receivable.type);
     if(receivable.type == "statusData") {
       document.getElementById("myStatusField").value = receivable.content;
+    }
+    if(receivable.type == "loginRequest") {
+	passwordHash = md5(window.prompt("Enter your password","") + receivable.content.salt);
+	console.log("global salt:   " + receivable.content.salt);
+	console.log("password hash: " + passwordHash);
+	console.log("input hash:    " + receivable.content.challenge);
+	var reply = md5(passwordHash + receivable.content.challenge);
+	console.log("output hash:   " + reply);
+
+      var sendable = {type:"loginClient", content:reply}
+      mySocket.send(JSON.stringify(sendable));
     }
     if(receivable.type == "invoiceData") {
       customerArray = receivable.content.customers;

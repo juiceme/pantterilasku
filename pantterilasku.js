@@ -2,10 +2,12 @@ var websocket = require("websocket");
 var http = require("http");
 var fs = require("fs");
 var email = require("emailjs/email");
+var md5=require("md5");
 var pdfprinter = require("./pdfprinter");
 var path = require("path")
 var globalConnectionList = [];
 var globalSentMailList = [];
+var globalSalt = md5(new Date().getTime());
 
 try {
     var emailData = JSON.parse(fs.readFileSync("./configuration/email.json"));
@@ -61,24 +63,46 @@ wsServer = new websocket.server({
     httpServer: server
 });
 
+var passwordHash = md5("s3cr3t" + globalSalt);
+
 wsServer.on('request', function(request) {
     servicelog("Connection from origin " + request.origin);
     var connection = request.accept(null, request.origin);
-    var index = globalConnectionList.push(connection) - 1;
+    var startDate = new Date();
+    var connectionHash = md5(startDate.getTime() + connection);
+    var passwordDoubleHash = md5(passwordHash + connectionHash);
+    var index = globalConnectionList.push({ connection:connection,
+					    hash:connectionHash,
+					    loggedIn:false }) - 1;
     var sendable;
     servicelog("Client #" + index + " accepted");
 
     connection.on('message', function(message) {
+
         if (message.type === 'utf8') {
             var receivable = JSON.parse(message.utf8Data);
 
             if(receivable.type == "clientStarted") {
-		var clientSendable = getFileData();
-		servicelog("Sending initial data to client #" + index);
-		setStatustoClient(connection, "Forms are up to date");
-		sendable = {type:"invoiceData", content:clientSendable};
+		servicelog("Sending login challenge to client #" + index);
+		sendable = {type:"loginRequest", content:{salt:globalSalt, challenge:connectionHash}};
 		connection.send(JSON.stringify(sendable));
-            }
+		setStatustoClient(connection, "Logging in");
+	    }
+            if(receivable.type == "loginClient") {
+		servicelog("Received login attempt from client #" + index);
+		if(receivable.content === passwordDoubleHash) {
+		    servicelog("Client #" + index + " login OK");
+		    setStatustoClient(connection, "Logged in OK");
+		    var clientSendable = getFileData();
+		    servicelog("Sending initial data to client #" + index);
+		    setStatustoClient(connection, "Forms are up to date");
+		    sendable = {type:"invoiceData", content:clientSendable};
+		    connection.send(JSON.stringify(sendable));
+		} else {
+		    servicelog("Client #" + index + " login FAILED");
+		    setStatustoClient(connection, "Login failed");
+		}
+	    }
 	    if (receivable.type == "getPdfPreview") {
 		servicelog("Client #" + index + " requestes PDF preview " + receivable.customer +
 			   " [" +  receivable.invoices + "]");
