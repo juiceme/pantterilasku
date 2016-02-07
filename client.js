@@ -13,7 +13,7 @@
 <br>
 <table id = "myInvoiceTable"> </table>
 <br>
-<button onclick="sendAllInvoices()">Send all invoices</button>
+<div id = "mySendButton"> </div>
 
 <script language="javascript" type="text/javascript">
 
@@ -30,18 +30,12 @@
 
   mySocket.onmessage = function (event) {
     var receivable = JSON.parse(event.data);
-      console.log(receivable.type);
     if(receivable.type == "statusData") {
       document.getElementById("myStatusField").value = receivable.content;
     }
     if(receivable.type == "loginRequest") {
-	passwordHash = md5(window.prompt("Enter your password","") + receivable.content.salt);
-	console.log("global salt:   " + receivable.content.salt);
-	console.log("password hash: " + passwordHash);
-	console.log("input hash:    " + receivable.content.challenge);
-	var reply = md5(passwordHash + receivable.content.challenge);
-	console.log("output hash:   " + reply);
-
+      var passwordHash = md5(window.prompt("Enter your password","") + receivable.content.salt);
+      var reply = md5(passwordHash + receivable.content.challenge);
       var sendable = {type:"loginClient", content:reply}
       mySocket.send(JSON.stringify(sendable));
     }
@@ -52,10 +46,12 @@
 				 document.getElementById("myCustomerTable"));
       document.body.replaceChild(createInvoiceTable(),
 				 document.getElementById("myInvoiceTable"));
+      document.body.replaceChild(createButton(),
+				 document.getElementById("mySendButton"));
     }
     if(receivable.type == "pdfUpload") {
-	pdfData = atob(receivable.content);
-	window.open("data:application/pdf," + escape(pdfData)); 
+      var pdfData = atob(receivable.content);
+      window.open("data:application/pdf," + escape(pdfData)); 
     }
   }
 
@@ -169,6 +165,14 @@ function createInvoiceTable() {
     table.appendChild(tableBody);
 
     return table;
+}
+
+function createButton() {
+    var button = document.createElement("button");
+    button.onclick = function() { sendAllInvoices(); }
+    var text = document.createTextNode("Send all invoices");
+    button.appendChild(text);
+    return button;
 }
 
 function toggleAllBoxes(index, state) {
