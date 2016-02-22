@@ -10,7 +10,8 @@ Input data for the recipients and items are stored as JSON files. Web-interface 
 
 ## Installation
 
-Pantterilasku requires the pdfkit npm module. You can install all depencencies by "npm install"
+Pantterilasku requires websocket, pdfkit, emailjs and md5 npm modules. You can install all depencencies by "npm install"
+The repository clones AES library as submodule, You need to install it by "git submodule init, git submodule update"
 
 ## Features
 
@@ -18,6 +19,9 @@ Pantterilasku requires the pdfkit npm module. You can install all depencencies b
 * Recipients managed in JSON file
 * Item list managed in JSON file
 * Web frontend to manage, generate and batch-email invoices/bills
+* Uses AES-CTR encryption between server and client to defeat man-in-the-middle attacks.
+* Preview for generated PDF invoices in the browser
+* Automatic batch mailing of invoices
   
 ## Coming soon!
 
