@@ -11,6 +11,7 @@ Aes.Ctr = require('./crypto/aes-ctr.js');
 var globalConnectionList = [];
 var globalSentMailList = [];
 var globalSalt = md5(new Date().getTime());
+var globalLoginData = {};
 
 try {
     var emailData = JSON.parse(fs.readFileSync("./configuration/email.json"));
@@ -20,6 +21,7 @@ try {
 	host: emailData.host,
 	ssl: emailData.ssl
     });
+    globalLoginData = JSON.parse(fs.readFileSync("./configuration/login.json"));
 } catch (err) {
     console.log(err.message);
     process.exit(1);
@@ -69,12 +71,11 @@ wsServer = new websocket.server({
     httpServer: server
 });
 
-var passwordHash = md5("s3cr3t" + globalSalt);
-
 wsServer.on('request', function(request) {
     servicelog("Connection from origin " + request.origin);
     var connection = request.accept(null, request.origin);
     var startDate = new Date();
+    var passwordHash = md5(globalLoginData.password + globalSalt);
     var connectionHash = md5(startDate.getTime() + connection);
     var passwordDoubleHash = md5(passwordHash + connectionHash);
     var index = globalConnectionList.push({ connection: connection,
