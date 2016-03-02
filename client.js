@@ -23,6 +23,7 @@ var site = window.location.hostname;
 var mySocket = new WebSocket("ws://" + site + ":8081/");
 var customerArray = [];
 var invoiceArray = [];
+var defaultEmailText;
 var passwordHash;
 
 mySocket.onopen = function (event) {
@@ -47,6 +48,7 @@ mySocket.onmessage = function (event) {
 	var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, passwordHash, 128));
 	customerArray = invoiceData.customers;
 	invoiceArray = invoiceData.invoices;
+	defaultEmailText = invoiceData.emailText;
 	document.body.replaceChild(createCustomerTable(),
 				   document.getElementById("myCustomerTable"));
 	document.body.replaceChild(createInvoiceTable(),
@@ -173,7 +175,7 @@ function createEmailText() {
     textArea.id = "myEmailTextArea"
     textArea.setAttribute('cols',80);
     textArea.setAttribute('rows', 5);
-    textArea.value = "Here's a new invoice for you.";
+    textArea.value = defaultEmailText;
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);

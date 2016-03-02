@@ -40,8 +40,9 @@ function getFileData() {
     return { customers : customerData.map(function(s) {
 	return ({ name: s.name, team: s.team });
     }),
-	     invoices  : invoiceData,
-	     company   : companyData };
+	     invoices  : invoiceData.invoices,
+	     company   : companyData,
+	     emailText : invoiceData.defaultEmailText };
 }
 
 function servicelog(s) {
@@ -202,7 +203,7 @@ function printPreview(callback, connectionIndex, customer, selectedInvoices)
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
-    var invoice = invoiceData.map(function(a,b) {
+    var invoice = invoiceData.invoices.map(function(a,b) {
 	if(selectedInvoices.indexOf(b) > -1) { return a; }
     }).filter(function(s){ return s; });
 
@@ -252,7 +253,7 @@ function sendBulkEmail(connection, emailText, allInvoices) {
 	var customer = customerData.map(function(a, b) {
 	    if(currentCustomer.id === b) { return a; }
 	}).filter(function(s){ return s; })[0];
-	var invoiceRows = invoiceData.map(function(a, b) {
+	var invoiceRows = invoiceData.invoices.map(function(a, b) {
 	    if(currentCustomer.invoices.indexOf(b+1) > -1) { return a; }
 	}).filter(function(s){ return s; });
 	var company = companyData.map(function(s) {
