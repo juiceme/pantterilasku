@@ -116,17 +116,19 @@ wsServer.on('request', function(request) {
 		}
 	    }
 	    if (receivable.type == "getPdfPreview") {
-		servicelog("Client #" + index + " requestes PDF preview " + receivable.customer +
-			   " [" +  receivable.invoices + "]");
+		var previewData = JSON.parse(Aes.Ctr.decrypt(receivable.content, passwordHash, 128));
+		servicelog("Client #" + index + " requestes PDF preview " + previewData.customer +
+			   " [" +  previewData.invoices + "]");
 		setStatustoClient(connection, "Printing preview");
-		printPreview(pushPreviewToClient, index, receivable.customer, receivable.invoices);
+		printPreview(pushPreviewToClient, index, previewData.customer, previewData.invoices);
             }
 	    if (receivable.type == "sendInvoices") {
 		globalSentMailList = [];
+		var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, passwordHash, 128));
 		servicelog("Client #" + index + " requestes bulk mailing" +
-			   " [" +  JSON.stringify(receivable.invoices) + "]");
+			   " [" +  JSON.stringify(invoiceData.invoices) + "]");
 		setStatustoClient(connection, "Sending email");
-		sendBulkEmail(connection, receivable.emailText, receivable.invoices);
+		sendBulkEmail(connection, invoiceData.emailText, invoiceData.invoices);
             }
         }
     });

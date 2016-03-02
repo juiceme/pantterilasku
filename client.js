@@ -219,9 +219,11 @@ function getPreviewPdf(s) {
 	}
 	i++;
     }
+    var clientSendable = { customer: s,
+			   invoices: selectedInvoices };
+    var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), passwordHash, 128);
     var sendable = { type: "getPdfPreview",
-		     customer: s,
-		     invoices: selectedInvoices };
+		     content : encryptedSendable };
     mySocket.send(JSON.stringify(sendable));
     return false;
 }
@@ -246,9 +248,11 @@ function sendAllInvoices() {
     });
 
     if (confirm('Are you sure you want to bulk email invoices?')) {
+	var clientSendable = { emailText: document.getElementById("myEmailTextArea").value,
+			       invoices: invoices };
+	var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), passwordHash, 128);
 	var sendable = { type: "sendInvoices",
-			 emailText: document.getElementById("myEmailTextArea").value,
-			 invoices: invoices };
+			 content : encryptedSendable };
 	mySocket.send(JSON.stringify(sendable));
     } else {
 	// Do nothing!
