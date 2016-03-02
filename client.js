@@ -13,6 +13,8 @@
 <br>
 <table id = "myInvoiceTable"> </table>
 <br>
+<div id = "myEmailText"> </div>
+<br>
 <div id = "mySendButton"> </div>
 
 <script language="javascript" type="text/javascript">
@@ -49,6 +51,8 @@ mySocket.onmessage = function (event) {
 				   document.getElementById("myCustomerTable"));
 	document.body.replaceChild(createInvoiceTable(),
 				   document.getElementById("myInvoiceTable"));
+	document.body.replaceChild(createEmailText(),
+				   document.getElementById("myEmailText"));
 	document.body.replaceChild(createButton(),
 				   document.getElementById("mySendButton"));
     }
@@ -137,6 +141,7 @@ function createInvoiceTable() {
     hCell.innerHTML = "<b>Invoices</b>";
     var count = 1;
     invoiceArray.forEach(function(name) {
+    hCell.innerHTML = "<b>Invoices</b>";
 	var row = document.createElement('tr');
 	var cell1 = document.createElement('td');
 	cell1.appendChild(document.createTextNode(count));
@@ -155,6 +160,30 @@ function createInvoiceTable() {
 	tableBody.appendChild(row);
 	count++;
     });
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    return table;
+}
+
+function createEmailText() {
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+    var textArea = document.createElement("textarea");
+    textArea.id = "myEmailTextArea"
+    textArea.setAttribute('cols',80);
+    textArea.setAttribute('rows', 5);
+    textArea.value = "Here's a new invoice for you.";
+
+    var hRow = tableHeader.insertRow(0);    
+    var hCell = hRow.insertCell(0);
+    hCell.innerHTML = "<b>Email text:</b>";
+    var row = document.createElement('tr');
+    var cell1 = document.createElement('td');
+    cell1.appendChild(textArea);
+
+    row.appendChild(cell1);
+    tableBody.appendChild(row);
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
     return table;
@@ -216,6 +245,7 @@ function sendAllInvoices() {
 
     if (confirm('Are you sure you want to bulk email invoices?')) {
 	var sendable = { type: "sendInvoices",
+			 emailText: document.getElementById("myEmailTextArea").value,
 			 invoices: invoices };
 	mySocket.send(JSON.stringify(sendable));
     } else {

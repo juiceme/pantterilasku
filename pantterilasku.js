@@ -125,7 +125,7 @@ wsServer.on('request', function(request) {
 		servicelog("Client #" + index + " requestes bulk mailing" +
 			   " [" +  JSON.stringify(receivable.invoices) + "]");
 		setStatustoClient(connection, "Sending email");
-		sendBulkEmail(connection, receivable.invoices);
+		sendBulkEmail(connection, receivable.emailText, receivable.invoices);
             }
         }
     });
@@ -233,7 +233,7 @@ function printPreview(callback, connectionIndex, customer, selectedInvoices)
     servicelog("Created PDF preview document");
 }
 
-function sendBulkEmail(connection, allInvoices) {
+function sendBulkEmail(connection, emailText, allInvoices) {
     var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
     var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
     var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
@@ -275,7 +275,7 @@ function sendBulkEmail(connection, allInvoices) {
 	var filename = "./temp/" + customer.name.replace(" ", "_") + "_" + billNumber + ".pdf";
 	var emailDetails = { address: customer.email,
 			     subject: "Uusi lasku " + company.name + " / " + billNumber,
-			     text: "Tässä uusi lasku.",
+			     text: emailText,
 			     filename: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf",
 			     sentCount: customerCount }
 
