@@ -10,7 +10,7 @@ Input data for the recipients and items are stored as JSON files. Web-interface 
 
 ## Installation
 
-Pantterilasku requires websocket, pdfkit, emailjs and md5 npm modules. You can install all depencencies by "npm install"
+Pantterilasku requires websocket, pdfkit and emailjs npm modules. You can install all depencencies by "npm install"
 The repository clones AES library as submodule, You need to install it by "git submodule init; git submodule update"
 
 ## Features

@@ -2,7 +2,6 @@ var websocket = require("websocket");
 var http = require("http");
 var fs = require("fs");
 var email = require("emailjs/email");
-var md5=require("md5");
 var pdfprinter = require("./pdfprinter");
 var path = require("path");
 var Aes = require('./crypto/aes.js');
@@ -10,7 +9,7 @@ Aes.Ctr = require('./crypto/aes-ctr.js');
 
 var globalConnectionList = [];
 var globalSentMailList = [];
-var globalSalt = md5(new Date().getTime());
+var globalSalt = Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), "password", 128);
 var globalLoginData = {};
 
 try {
@@ -75,12 +74,10 @@ wsServer = new websocket.server({
 wsServer.on('request', function(request) {
     servicelog("Connection from origin " + request.origin);
     var connection = request.accept(null, request.origin);
-    var startDate = new Date();
-    var passwordHash = md5(globalLoginData.password + globalSalt);
-    var connectionHash = md5(startDate.getTime() + connection);
-    var passwordDoubleHash = md5(passwordHash + connectionHash);
+    var sessionChallenge = "challenge_" + Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), globalSalt, 128);
+    var encryptedChallenge = Aes.Ctr.encrypt(sessionChallenge, globalLoginData.password, 128);
     var index = globalConnectionList.push({ connection: connection,
-					    hash: passwordHash,
+					    challenge: sessionChallenge,
 					    loggedIn: false }) - 1;
     var sendable;
     servicelog("Client #" + index + " accepted");
@@ -93,18 +90,18 @@ wsServer.on('request', function(request) {
             if(receivable.type == "clientStarted") {
 		servicelog("Sending login challenge to client #" + index);
 		sendable = { type: "loginRequest",
-			     content: { salt: globalSalt,
-					challenge: connectionHash } };
+			     content: encryptedChallenge };
 		connection.send(JSON.stringify(sendable));
 		setStatustoClient(connection, "Logging in");
 	    }
             if(receivable.type == "loginClient") {
 		servicelog("Received login attempt from client #" + index);
-		if(receivable.content === passwordDoubleHash) {
+		response = Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128);
+		if(response.substring(0, (response.length - 1)) === sessionChallenge) {
 		    servicelog("Client #" + index + " login OK");
 		    setStatustoClient(connection, "Logged in OK");
 		    globalConnectionList[index].loggedIn = true;
-		    var clientSendable = Aes.Ctr.encrypt(JSON.stringify(getFileData()), passwordHash, 128);
+		    var clientSendable = Aes.Ctr.encrypt(JSON.stringify(getFileData()), globalLoginData.password, 128);
 		    servicelog("Sending initial data to client #" + index);
 		    setStatustoClient(connection, "Forms are up to date");
 		    sendable = {type: "invoiceData",
@@ -116,7 +113,7 @@ wsServer.on('request', function(request) {
 		}
 	    }
 	    if (receivable.type == "getPdfPreview") {
-		var previewData = JSON.parse(Aes.Ctr.decrypt(receivable.content, passwordHash, 128));
+		var previewData = JSON.parse(Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128));
 		servicelog("Client #" + index + " requestes PDF preview " + previewData.customer +
 			   " [" +  previewData.invoices + "]");
 		setStatustoClient(connection, "Printing preview");
@@ -124,7 +121,7 @@ wsServer.on('request', function(request) {
             }
 	    if (receivable.type == "sendInvoices") {
 		globalSentMailList = [];
-		var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, passwordHash, 128));
+		var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128));
 		servicelog("Client #" + index + " requestes bulk mailing" +
 			   " [" +  JSON.stringify(invoiceData.invoices) + "]");
 		setStatustoClient(connection, "Sending email");
@@ -166,9 +163,9 @@ function pushPreviewToClient(connectionIndex, dummy, filename) {
 	return;
     }
 
-    fii = fs.readFileSync(filename).toString('base64');
+    var pdfFile = fs.readFileSync(filename).toString('base64');
     var sendable = { type: "pdfUpload",
-		     content: Aes.Ctr.encrypt(fii, globalConnectionList[connectionIndex].hash, 128) };
+		     content: Aes.Ctr.encrypt(pdfFile, globalLoginData.password, 128) };
     globalConnectionList[connectionIndex].connection.send(JSON.stringify(sendable));
 
     setStatustoClient(globalConnectionList[connectionIndex].connection, "OK");
