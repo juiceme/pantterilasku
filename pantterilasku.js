@@ -4,37 +4,19 @@ var fs = require("fs");
 var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
 var path = require("path");
-var Aes = require('./crypto/aes.js');
-Aes.Ctr = require('./crypto/aes-ctr.js');
+var Aes = require("./crypto/aes.js");
+Aes.Ctr = require("./crypto/aes-ctr.js");
+var datastorage = require("./datastorage/datastorage.js");
 
 var globalConnectionList = [];
 var globalSentMailList = [];
 var globalSalt = Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), "password", 128);
 var globalLoginData = {};
 
-try {
-    var emailData = JSON.parse(fs.readFileSync("./configuration/email.json"));
-    var emailConnection = email.server.connect({
-	user: emailData.user,
-	password: emailData.password,
-	host: emailData.host,
-	ssl: emailData.ssl
-    });
-    globalLoginData = JSON.parse(fs.readFileSync("./configuration/login.json"));
-} catch (err) {
-    console.log(err.message);
-    process.exit(1);
-}
-
 function getFileData() {
-    try {
-	var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
-	var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
-	var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
-    } catch (err) {
-	console.log(err.message);
-	process.exit(1);
-    }
+    var customerData = datastorage.read("customers");
+    var invoiceData = datastorage.read("invoices");
+    var companyData = datastorage.read("company");
 
     return { customers : customerData.map(function(s) {
 	return ({ name: s.name, team: s.team });
@@ -71,7 +53,7 @@ wsServer = new websocket.server({
     httpServer: server
 });
 
-wsServer.on('request', function(request) {
+wsServer.on("request", function(request) {
     servicelog("Connection from origin " + request.origin);
     var connection = request.accept(null, request.origin);
     var sessionChallenge = "challenge_" + Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), globalSalt, 128);
@@ -82,9 +64,9 @@ wsServer.on('request', function(request) {
     var sendable;
     servicelog("Client #" + index + " accepted");
 
-    connection.on('message', function(message) {
+    connection.on("message", function(message) {
 
-        if (message.type === 'utf8') {
+        if (message.type === "utf8") {
             var receivable = JSON.parse(message.utf8Data);
 
             if(receivable.type == "clientStarted") {
@@ -130,7 +112,7 @@ wsServer.on('request', function(request) {
         }
     });
 
-    connection.on('close', function(connection) {
+    connection.on("close", function(connection) {
         servicelog("client #" + index + " disconnected");
         globalConnectionList.splice(index, 1);
     });
@@ -162,8 +144,13 @@ function pushPreviewToClient(connectionIndex, dummy, filename) {
         servicelog("Login failure in PDF preview sending");
 	return;
     }
-
-    var pdfFile = fs.readFileSync(filename).toString('base64');
+    try {
+	var pdfFile = fs.readFileSync(filename).toString("base64");
+    } catch(err) {
+	servicelog("Failed to load PDF preview file: " + err);
+	setStatustoClient(globalConnectionList[connectionIndex].connection, "PDF load failure!");
+	return;
+    }
     var sendable = { type: "pdfUpload",
 		     content: Aes.Ctr.encrypt(pdfFile, globalLoginData.password, 128) };
     globalConnectionList[connectionIndex].connection.send(JSON.stringify(sendable));
@@ -172,37 +159,48 @@ function pushPreviewToClient(connectionIndex, dummy, filename) {
 }
 
 function sendEmail(connection, details, filename) {
+    var failedSending = false;
+    var emailData = datastorage.read("email");
     setStatustoClient(connection, "Sending email: " + details.sentCount);
-    emailConnection.send({ text: details.text,
-			   from: emailData.sender,
-			   to: details.address,
-			   subject: details.subject,
-			   attachment: [ { path: filename,
-					   type: "application/pdf",
-					   name: details.filename } ]
-			 }, function(err, message) {
-			     if(err) {
-				 console.log(err || message);
-				 globalSentMailList.push({ failed: filename });
-				 fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
-				 setStatustoClient(connection, "Failed sending email: " + details.sentCount);
-			     } else {
-				 globalSentMailList.push({ passed: filename });
-				 fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
-				 setStatustoClient(connection, "Sent email: " + details.sentCount);
-			     }
-			 });
+    email.server.connect({
+	user: emailData.user,
+	password: emailData.password,
+	host: emailData.host,
+	ssl: emailData.ssl
+    }).send({ text: details.text,
+	      from: emailData.sender,
+	      to: details.address,
+	      subject: details.subject,
+	      attachment: [ { path: filename,
+			      type: "application/pdf",
+			      name: details.filename } ]
+	    }, function(err, message) {
+		if(err) {
+		    console.log(err || message);
+		    globalSentMailList.push({ failed: filename });
+		    fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
+		    setStatustoClient(connection, "Failed sending email: " + details.sentCount);
+		    failedSending = true;
+		} else {
+		    globalSentMailList.push({ passed: filename });
+		    fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
+		    setStatustoClient(connection, "Sent email: " + details.sentCount);
+		}
+	    });
+    if(!failedSending) {
+	setStatustoClient(connection, "All emails sent: " + details.sentCount);
+    }
 }
 
 function printPreview(callback, connectionIndex, customer, selectedInvoices)
 {
-    var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
-    var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
-    var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
+    var customerData = datastorage.read("customers");
+    var companyData = datastorage.read("company");
+    var invoiceData = datastorage.read("invoices");
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
-    var invoice = invoiceData.invoices.map(function(a,b) {
+   var invoice = invoiceData.invoices.map(function(a,b) {
 	if(selectedInvoices.indexOf(b) > -1) { return a; }
     }).filter(function(s){ return s; });
 
@@ -234,9 +232,9 @@ function printPreview(callback, connectionIndex, customer, selectedInvoices)
 }
 
 function sendBulkEmail(connection, emailText, allInvoices) {
-    var customerData = JSON.parse(fs.readFileSync("./configuration/customers.json"));
-    var companyData = JSON.parse(fs.readFileSync("./configuration/company.json"));
-    var invoiceData = JSON.parse(fs.readFileSync("./configuration/invoices.json"));
+    var customerData = datastorage.read("customers");
+    var companyData = datastorage.read("company");
+    var invoiceData = datastorage.read("invoices");
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var customerCount = 0;
@@ -290,6 +288,15 @@ if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
 if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+
+// datastorage.setLogger(servicelog);
+datastorage.initialize("email");
+datastorage.initialize("login");
+datastorage.initialize("customers");
+datastorage.initialize("invoices");
+datastorage.initialize("company");
+
+globalLoginData = datastorage.read("login");
 
 servicelog("Waiting for client connection to port 8080...");
 serveClientPage();

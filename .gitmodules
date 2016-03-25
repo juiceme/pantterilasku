@@ -1,3 +1,6 @@
 [submodule "crypto"]
 	path = crypto
 	url = https://github.com/juiceme/crypto.git
+[submodule "datastorage"]
+	path = datastorage
+	url = https://github.com/juiceme/datastorage.git
