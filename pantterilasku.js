@@ -159,9 +159,12 @@ function pushPreviewToClient(connectionIndex, dummy, filename) {
 }
 
 function sendEmail(connection, details, filename) {
-    var failedSending = false;
     var emailData = datastorage.read("email");
     setStatustoClient(connection, "Sending email: " + details.sentCount);
+    if(emailData.blindlyTrust) {
+	servicelog("Trusting self-signed certificates");
+	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+    }
     email.server.connect({
 	user: emailData.user,
 	password: emailData.password,
@@ -176,20 +179,16 @@ function sendEmail(connection, details, filename) {
 			      name: details.filename } ]
 	    }, function(err, message) {
 		if(err) {
-		    console.log(err || message);
+		    servicelog(err + " : " + JSON.stringify(message));
 		    globalSentMailList.push({ failed: filename });
 		    fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
 		    setStatustoClient(connection, "Failed sending email: " + details.sentCount);
-		    failedSending = true;
 		} else {
 		    globalSentMailList.push({ passed: filename });
 		    fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
 		    setStatustoClient(connection, "Sent email: " + details.sentCount);
 		}
 	    });
-    if(!failedSending) {
-	setStatustoClient(connection, "All emails sent: " + details.sentCount);
-    }
 }
 
 function printPreview(callback, connectionIndex, customer, selectedInvoices)
@@ -283,11 +282,11 @@ function sendBulkEmail(connection, emailText, allInvoices) {
 
 }
 
+servicelog("Waiting for client connection to port 8080...");
+
 if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
 if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
 if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 // datastorage.setLogger(servicelog);
 datastorage.initialize("email");
@@ -298,5 +297,4 @@ datastorage.initialize("company");
 
 globalLoginData = datastorage.read("login");
 
-servicelog("Waiting for client connection to port 8080...");
 serveClientPage();

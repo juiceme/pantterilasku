@@ -3,5 +3,6 @@
     "user" : "username",
     "password" : "password",
     "sender" : "you <username@your-email.com>",
-    "ssl" : true
+    "ssl" : true,
+    "blindlyTrust" : true
 }
