@@ -269,7 +269,9 @@ function sendBulkEmail(connection, emailText, allInvoices) {
 		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
 		     notice: "" }
 
-	var filename = "./temp/" + customer.name.replace(" ", "_") + "_" + billNumber + ".pdf";
+	var customerName = customer.name.replace(" ", "_");
+	customerName = customerName.replace("/", "_");
+	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 	var emailDetails = { address: customer.email,
 			     subject: "Uusi lasku " + company.name + " / " + billNumber,
 			     text: emailText,
