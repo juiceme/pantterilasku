@@ -1,8 +1,8 @@
-{
+{"file":"email","backup":false,"content":{
     "host" : "smtp.your-email.com",
     "user" : "username",
     "password" : "password",
     "sender" : "you <username@your-email.com>",
     "ssl" : true,
     "blindlyTrust" : true
-}
+}}

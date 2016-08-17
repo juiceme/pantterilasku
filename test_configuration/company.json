@@ -1,4 +1,4 @@
-[
+{"file":"company","backup":true,"content":{"company":[
     {
 	"id"         : "black",
 	"name"       : "Panthers Black",
@@ -11,5 +11,5 @@
 	"bankName"   : "Bank xxx",
 	"iban"       : "FI00 1234 5678 9012 34",
 	"bic"        : "xxxxFIHH" }
-]
+]}}
 

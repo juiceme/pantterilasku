@@ -4,143 +4,275 @@ var fs = require("fs");
 var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
 var path = require("path");
-var Aes = require("./crypto/aes.js");
-Aes.Ctr = require("./crypto/aes-ctr.js");
-var datastorage = require("./datastorage/datastorage.js");
+var Aes = require('./crypto/aes.js');
+Aes.Ctr = require('./crypto/aes-ctr.js');
+var sha1 = require('./crypto/sha1.js');
+var datastorage = require('./datastorage/datastorage.js');
 
-var globalConnectionList = [];
-var globalSentMailList = [];
-var globalSalt = Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), "password", 128);
-var globalLoginData = {};
-
-function getFileData() {
-    var customerData = datastorage.read("customers");
-    var invoiceData = datastorage.read("invoices");
-    var companyData = datastorage.read("company");
-
-    return { customers : customerData.map(function(s) {
-	return ({ name: s.name, team: s.team });
-    }),
-	     invoices  : invoiceData.invoices,
-	     company   : companyData,
-	     emailText : invoiceData.defaultEmailText };
-}
+var globalSalt = sha1.hash(JSON.stringify(new Date().getTime()));
 
 function servicelog(s) {
     console.log((new Date()) + " --- " + s);
 }
 
-function serveClientPage() {
-    http.createServer(function(request,response){
-	var clientjs = fs.readFileSync("./client.js", "utf8");
-	var aesjs = fs.readFileSync("./crypto/aes.js", "utf8");
-	var aesctrjs = fs.readFileSync("./crypto/aes-ctr.js", "utf8");
-	var sendable = clientjs + aesjs + aesctrjs + "</script></body></html>";
-	response.writeHeader(200, {"Content-Type": "text/html"});
-	response.write(sendable);
-	response.end();
-    }).listen(8080);
-}
-
-var server = http.createServer(function(request, response) {
-    // process HTTP request. Since we're writing just WebSockets server
-    // we don't have to implement anything.
-});
-
-server.listen(8081, function() {});
-
-wsServer = new websocket.server({
-    httpServer: server
-});
-
-wsServer.on("request", function(request) {
-    servicelog("Connection from origin " + request.origin);
-    var connection = request.accept(null, request.origin);
-    var sessionChallenge = "challenge_" + Aes.Ctr.encrypt(JSON.stringify(new Date().getTime()), globalSalt, 128);
-    var encryptedChallenge = Aes.Ctr.encrypt(sessionChallenge, globalLoginData.password, 128);
-    var index = globalConnectionList.push({ connection: connection,
-					    challenge: sessionChallenge,
-					    loggedIn: false }) - 1;
-    var sendable;
-    servicelog("Client #" + index + " accepted");
-
-    connection.on("message", function(message) {
-
-        if (message.type === "utf8") {
-            var receivable = JSON.parse(message.utf8Data);
-
-            if(receivable.type == "clientStarted") {
-		servicelog("Sending login challenge to client #" + index);
-		sendable = { type: "loginRequest",
-			     content: encryptedChallenge };
-		connection.send(JSON.stringify(sendable));
-		setStatustoClient(connection, "Logging in");
-	    }
-            if(receivable.type == "loginClient") {
-		servicelog("Received login attempt from client #" + index);
-		response = Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128);
-		if(response.substring(0, (response.length - 1)) === sessionChallenge) {
-		    servicelog("Client #" + index + " login OK");
-		    setStatustoClient(connection, "Logged in OK");
-		    globalConnectionList[index].loggedIn = true;
-		    var clientSendable = Aes.Ctr.encrypt(JSON.stringify(getFileData()), globalLoginData.password, 128);
-		    servicelog("Sending initial data to client #" + index);
-		    setStatustoClient(connection, "Forms are up to date");
-		    sendable = {type: "invoiceData",
-				content: clientSendable };
-		    connection.send(JSON.stringify(sendable));
-		} else {
-		    servicelog("Client #" + index + " login FAILED");
-		    setStatustoClient(connection, "Login failed");
-		}
-	    }
-	    if (receivable.type == "getPdfPreview") {
-		var previewData = JSON.parse(Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128));
-		servicelog("Client #" + index + " requestes PDF preview " + previewData.customer +
-			   " [" +  previewData.invoices + "]");
-		setStatustoClient(connection, "Printing preview");
-		printPreview(pushPreviewToClient, index, previewData.customer, previewData.invoices);
-            }
-	    if (receivable.type == "sendInvoices") {
-		globalSentMailList = [];
-		var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, globalLoginData.password, 128));
-		servicelog("Client #" + index + " requestes bulk mailing" +
-			   " [" +  JSON.stringify(invoiceData.invoices) + "]");
-		setStatustoClient(connection, "Sending email");
-		sendBulkEmail(connection, invoiceData.emailText, invoiceData.invoices);
-            }
-        }
-    });
-
-    connection.on("close", function(connection) {
-        servicelog("client #" + index + " disconnected");
-        globalConnectionList.splice(index, 1);
-    });
-
-});
-
-function setStatustoClient(connection, status) {
-    var sendable = { type:"statusData",
+function setStatustoClient(cookie, status) {
+    var sendable = { type: "statusData",
 		     content: status };
-    connection.send(JSON.stringify(sendable));
+    cookie.connection.send(JSON.stringify(sendable));
 }
 
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
 }
+
 function getniceDateTime(date) {
     return (date.getDate().toString() + (date.getMonth()+1).toString() + date.getFullYear().toString() +
 	    date.getHours().toString() + date.getMinutes().toString());
 }
 
-function pushPreviewToClient(connectionIndex, dummy, filename) {
+function sendPlainTextToClient(cookie, sendable) {
+    cookie.connection.send(JSON.stringify(sendable));
+}
+
+function sendCipherTextToClient(cookie, sendable) {
+    var cipherSendable = { type: sendable.type,
+			   content: Aes.Ctr.encrypt(JSON.stringify(sendable.content),
+						    cookie.aesKey, 128) };
+    cookie.connection.send(JSON.stringify(cipherSendable));
+}
+
+function printLanguageVariable(tag, language) {
+    return "var " + tag + " = \"" + getLanguageText(language, tag) + "\";"
+}
+
+function getClientVariables(language) {
+    var language = mainConfig.main.language;
+    return "var WEBSOCK_PORT = " + mainConfig.main.port + ";\n" +
+	printLanguageVariable("HELPTEXT_LOGIN_A", language) + "\n" +
+	printLanguageVariable("HELPTEXT_LOGIN_B", language) + "\n" +
+	printLanguageVariable("HELPTEXT_LOGIN_C", language) + "\n" +
+	printLanguageVariable("HELPTEXT_EMAIL_A", language) + "\n" +
+	printLanguageVariable("HELPTEXT_EMAIL_B", language) + "\n" +
+	printLanguageVariable("HELPTEXT_USER_A", language) + "\n" +
+	printLanguageVariable("HELPTEXT_USER_B", language) + "\n" +
+	printLanguageVariable("HELPTEXT_USER_C", language) + "\n" +
+	printLanguageVariable("HELPTEXT_USER_D", language) + "\n\n";
+}
+
+var webServer = http.createServer(function(request,response){
+    var clienthead = fs.readFileSync("./clienthead", "utf8");
+    var variables = getClientVariables();
+    var clientbody = fs.readFileSync("./client.js", "utf8");
+    var aesjs = fs.readFileSync("./crypto/aes.js", "utf8");
+    var aesctrjs = fs.readFileSync("./crypto/aes-ctr.js", "utf8");
+    var sha1js = fs.readFileSync("./crypto/sha1.js", "utf8");
+    var sendable = clienthead + variables + clientbody + aesjs + aesctrjs + sha1js + "</script></body></html>";
+    response.writeHeader(200, { "Content-Type": "text/html",
+                                "X-Frame-Options": "deny",
+                                "X-XSS-Protection": "1; mode=block",
+                                "X-Content-Type-Options": "nosniff" });
+    response.write(sendable);
+    response.end();
+    servicelog("Respond with client to: " + JSON.stringify(request.headers));
+});
+
+wsServer = new websocket.server({
+    httpServer: webServer,
+    autoAcceptConnections: false
+});
+
+var connectionCount = 0;
+
+wsServer.on('request', function(request) {
+    servicelog("Connection from origin " + request.origin);
+    var connection = request.accept(null, request.origin);
+    var cookie = { count:connectionCount++, connection:connection, state:"new" };
+    var sendable;
+    servicelog("Client #" + cookie.count  + " accepted");
+
+    connection.on('message', function(message) {
+        if (message.type === 'utf8') {
+	    try {
+		var receivable = JSON.parse(message.utf8Data);
+	    } catch(err) {
+		servicelog("Received illegal message: " + err);
+		return;
+	    }
+	    if(!receivable.type || !receivable.content) {
+		servicelog("Received broken message: " + JSON.stringify(receivable));
+		return;
+	    }
+
+	    servicelog("Incoming message: " + JSON.stringify(receivable));
+	    var type = receivable.type;
+	    var content = receivable.content;
+
+            if(type === "clientStarted") { processClientStarted(cookie); }
+	    if(type === "userLogin") { processUserLogin(cookie, content); }
+	    if(type === "loginResponse") { processLoginResponse(cookie, content); }
+	    if(type === "createAccount") { processCreateAccount(cookie, content); }
+	    if((type === "confirmEmail") &&
+	       stateIs(cookie, "clientStarted")) { processConfirmEmail(cookie, content); }
+	    if((type === "validateAccount") &&
+	       stateIs(cookie, "clientStarted")) { processValidateAccount(cookie, content); }
+
+	    if((type === "getPdfPreview") &&
+	       stateIs(cookie, "loggedIn")) { processPdfPreview(cookie, content); }
+
+	}
+    });
+
+    connection.on('close', function(connection) {
+	servicelog("Client #" + cookie.count  + " disconnected");
+        cookie = {};
+    });
+});
+
+function stateIs(cookie, state) {
+    return (cookie.state === state);
+}
+
+function setState(cookie, state) {
+    cookie.state = state;
+}
+
+function processClientStarted(cookie) {
+    if(cookie["user"] !== undefined) {
+	if(cookie.user["username"] !== undefined) {
+	    servicelog("User " + cookie.user.username + " logged out");
+	}
+    }
+    servicelog("Sending initial login view to client #" + cookie.count);
+    setState(cookie, "clientStarted");
+    cookie.aesKey = "";
+    cookie.user = {};
+    cookie.challenge = "";
+    var sendable = { type: "loginView" }
+    sendPlainTextToClient(cookie, sendable);
+    setStatustoClient(cookie, "Login");
+}
+
+function processUserLogin(cookie, content) {
+    var sendable;
+    if(!content.username) {
+	servicelog("Illegal user login message");
+	processClientStarted(cookie);
+	return;
+    } else {
+	var user = getUserByHashedName(content.username);
+	if(user.length === 0) {
+	    servicelog("Unknown user login attempt");
+	    processClientStarted(cookie);
+	    return;
+	} else {
+	    cookie.user = user[0];
+	    cookie.aesKey = user[0].password;
+	    servicelog("User " + user[0].username + " logging in");
+	    var plainChallenge = getNewChallenge();
+	    servicelog("plainChallenge:   " + plainChallenge);
+	    cookie.challenge = JSON.stringify(plainChallenge);
+	    sendable = { type: "loginChallenge",
+			 content: plainChallenge };
+	    sendCipherTextToClient(cookie, sendable);
+	}
+    }
+}
+
+function processLoginResponse(cookie, content) {
+    var sendable;
+    var plainResponse = Aes.Ctr.decrypt(content, cookie.user.password, 128);
+    if(cookie.challenge === plainResponse) {
+	servicelog("User login OK");
+	setState(cookie, "loggedIn");
+	setStatustoClient(cookie, "Login OK");
+	cookie.user.invoiceData = createUserInvoiceData(cookie.user.username);
+        sendable = { type: "invoiceData",
+		     content: cookie.user.invoiceData };
+	sendCipherTextToClient(cookie, sendable);
+	servicelog("Sent invoiceData to client #" + cookie.count);
+    } else {
+	servicelog("User login failed");
+	processClientStarted(cookie);
+    }
+}
+
+function processPdfPreview(cookie, content) {
+    var previewData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requestes PDF preview " + previewData.customer +
+	       " [" +  JSON.stringify(previewData.invoices) + "]");
+    setStatustoClient(cookie, "Printing preview");
+    printPreview(pushPreviewToClient, cookie, previewData.customer, previewData.invoices);
+}
+
+function printPreview(callback, cookie, customer, selectedInvoices)
+{
+    var filename = "./temp/preview.pdf";
+    var now = new Date();
+
+    var invoice = cookie.user.invoiceData.invoices.map(function(a, b) {
+	if(selectedInvoices.map(function(e) {
+	    return e.item;
+	}).indexOf(b) >= 0) {
+	    a.n = selectedInvoices[selectedInvoices.map(function(e) {
+		return e.item;
+	    }).indexOf(b)].count;
+	    return a;
+	}
+    }).filter(function(s){ return s; });
+
+/*
+    var invoice = cookie.user.invoiceData.invoices.map(function(a, b) {
+	var index = selectedInvoices.map(function(e) {
+	    return e.item;
+	}).indexOf(b);
+	var tmpInvoice = cookie.user.invoiceData.invoices[index];
+	if(typeof(tmpInvoice) === 'object') {
+	    tmpInvoice.n = selectedInvoices[index].count;
+	};
+	return tmpInvoice;
+    }).filter(function(s){ return s; });
+*/
+
+    servicelog(JSON.stringify(invoice));
+
+    if(invoice.length == 0) {
+	servicelog("Invoice empty, not creating PDF preview document");
+	setStatustoClient(cookie, "No preview available");
+	return null;
+    }
+ 
+    var company = cookie.user.invoiceData.company.map(function(s) {
+	if(s.id === cookie.user.invoiceData.customers[customer].team) { return s }
+    }).filter(function(s){ return s; })[0];
+
+    var bill = { company: company.name,
+		 bankName: company.bankName,
+		 bic: company.bic,
+		 iban: company.iban,
+		 customer: cookie.user.invoiceData.customers[customer].name,
+		 reference: cookie.user.invoiceData.customers[customer].reference,
+		 date: getNiceDate(now),
+		 number: "",
+		 id: "",
+		 intrest: "",
+		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
+		 notice: "" }
+
+    pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice);
+    servicelog("Created PDF preview document");
+}
+
+function pushPreviewToClient(cookie, dummy, filename) {
+
+    servicelog("*********pushing");
+
     if(filename == null) {
-	setStatustoClient(globalConnectionList[connectionIndex].connection, "No preview available");
+	setStatustoClient(cookie, "No preview available");
         servicelog("No PDF preview available");
 	return;
     }
-    if(globalConnectionList[connectionIndex].loggedIn != true) {
-	setStatustoClient(globalConnectionList[connectionIndex].connection, "Login failure");
+    if(!stateIs(cookie, "loggedIn")) {
+	setStatustoClient(cookie, "Login failure");
         servicelog("Login failure in PDF preview sending");
 	return;
     }
@@ -148,19 +280,269 @@ function pushPreviewToClient(connectionIndex, dummy, filename) {
 	var pdfFile = fs.readFileSync(filename).toString("base64");
     } catch(err) {
 	servicelog("Failed to load PDF preview file: " + err);
-	setStatustoClient(globalConnectionList[connectionIndex].connection, "PDF load failure!");
+	setStatustoClient(cookie, "PDF load failure!");
 	return;
     }
     var sendable = { type: "pdfUpload",
-		     content: Aes.Ctr.encrypt(pdfFile, globalLoginData.password, 128) };
-    globalConnectionList[connectionIndex].connection.send(JSON.stringify(sendable));
-
-    setStatustoClient(globalConnectionList[connectionIndex].connection, "OK");
+		     content: pdfFile };
+    sendCipherTextToClient(cookie, sendable);
+    setStatustoClient(cookie, "OK");
 }
 
-function sendEmail(connection, details, filename) {
+function processCreateAccount(cookie, content) {
+    var sendable;
+    servicelog("temp passwd: " + JSON.stringify(cookie.aesKey));
+    var account = JSON.parse(Aes.Ctr.decrypt(content, cookie.aesKey, 128));
+
+    if(typeof(account) !== "object") {
+	servicelog("Received illegal account creation data");
+	return false;
+    }
+    if(account["username"] === undefined) {
+	servicelog("Received account creation data without username");
+	return false;
+    }
+
+    if(stateIs(cookie, "newUserValidated")) {
+	servicelog("Request for new user: [" + account.username + "]");
+	if(!createAccount(account)) {
+	    servicelog("Cannot create account " + account.username);
+	    // there are more possible reasons than already existing account, however user needs
+	    // not know about that, hence display only "Account already exists!" in client...
+	    setStatustoClient(cookie, "Account already exists!");
+	    sendable = { type: "createNewAccount" };
+	    sendPlainTextToClient(cookie, sendable);
+	    return;
+	} else {
+	    processClientStarted(cookie);
+	    setStatustoClient(cookie, "Account created!");
+	    var emailSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_CONFIRM_SUBJECT");
+	    var emailAdminSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_CONFIRM_ADMIN_SUBJECT");
+	    var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+							   "NEW_ACCOUNT_CONFIRM_GREETING"),
+					   account.username,
+					   mainConfig.main.siteFullUrl);
+	    var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+								"NEW_ACCOUNT_CONFIRM_ADMIN_GREETING"),
+						account.username);
+	    sendEmail(cookie, emailSubject, emailBody, account.email, "account creation");
+	    sendEmail(cookie, emailAdminSubject, emailAdminBody, mainConfig.main.adminEmailAddess, "account creation");
+	    return;
+	}
+    }
+    if(stateIs(cookie, "oldUserValidated")) {
+	servicelog("Request account change for user: [" + account.username + "]");
+	var user = getUserByUserName(account.username);
+	if(user.length === 0) {
+	    processClientStarted(cookie);
+	    setStatustoClient(cookie, "Illegal user operation!");
+	    return;
+	} else {
+	    if(updateUserAccount(cookie, account)) {
+		setStatustoClient(cookie, "Account updated!");
+	    } else {
+		setStatustoClient(cookie, "Account update failed!");
+	    }
+	    processClientStarted(cookie);
+	    return;
+	}
+    }
+}
+
+function processConfirmEmail(cookie, content) {
+    servicelog("Request for email verification: [" + content + "]");
+    sendVerificationEmail(cookie, content);
+    processClientStarted(cookie);
+    setStatustoClient(cookie, "Email sent!");
+}
+
+function processValidateAccount(cookie, content) {
+    if(!content.email || !content.challenge) {
+	servicelog("Illegal validate account message");
+	processClientStarted(cookie);
+	return;
+    } else {
+	servicelog("Validation code: " + JSON.stringify(content));
+	account = validateAccountCode(content.email.toString());
+	if((account !== false) && (Aes.Ctr.decrypt(content.challenge, account.token.key, 128)
+				   === "clientValidating")) {
+	    setState(cookie, "newUserValidated");
+	    setStatustoClient(cookie, "Validation code correct!");
+	    cookie.aesKey = account.token.key;
+	    var newAccount = {email: account.email};
+	    newAccount.buttonText = "Create Account!";
+	    var user = getUserByEmail(account.email);
+	    if(user.length !== 0) {
+		newAccount.username = user[0].username;
+		newAccount.realname = user[0].realname;
+		newAccount.phone = user[0].phone;
+		newAccount.buttonText = "Save Account!"
+		setState(cookie, "oldUserValidated");
+	    }
+	    sendable = { type: "createNewAccount",
+			 content: newAccount };
+	    sendCipherTextToClient(cookie, sendable);
+	    return;
+	} else {
+	    processClientStarted(cookie);
+	    setStatustoClient(cookie, "Validation code failed!");
+	    return;
+	}
+    }
+}
+
+function readUserData() {
+    userData = datastorage.read("users");
+    if(userData === false) {
+	servicelog("User database read failed");
+    } 
+    return userData;
+ }
+
+function updateUserAccount(cookie, account) {
+    var userData = readUserData();
+    var oldUserAccount = getUserByUserName(account.username);
+    if(oldUserAccount.length === 0) {
+	return false;
+    } else {
+	var newUserData = { users : [] };
+	newUserData.users = userData.users.filter(function(u) {
+	    return u.username !== account.username;
+	});
+	var newUserAccount = { username: account.username,
+			       hash: sha1.hash(account.username),
+			       password: account.password,
+			       priviliges: oldUserAccount[0].priviliges,
+			       teams: oldUserAccount[0].teams };
+	if(account["realname"] !== undefined) { newUserAccount.realname = account.realname; }
+	if(account["email"] !== undefined) { newUserAccount.email = account.email; }
+	if(account["phone"] !== undefined) { newUserAccount.phone = account.phone; }
+	newUserData.users.push(newUserAccount);
+	if(datastorage.write("users", newUserData) === false) {
+	    servicelog("User database write failed");
+	} else {
+	    servicelog("Updated User Account: " + JSON.stringify(newUserAccount));
+	}
+	var emailSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_CONFIRM_SUBJECT");
+	var emailAdminSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_CONFIRM_ADMIN_SUBJECT");
+	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+						       "PASSWORD_RESET_CONFIRM_GREETING"),
+				       account.username,
+				       mainConfig.main.siteFullUrl);
+	var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+							    "PASSWORD_RESET_CONFIRM_ADMIN_GREETING"),
+					    account.username);
+	sendEmail(cookie, emailSubject, emailBody, account.email, "account update");
+	sendEmail(cookie, emailAdminSubject, emailAdminBody, mainConfig.main.adminEmailAddess, "account update");
+	return true;
+    }
+}
+
+function getUserByUserName(username) {
+    return readUserData().users.filter(function(u) {
+	return u.username === username;
+    });
+}
+
+function getUserByEmail(email) {
+    return readUserData().users.filter(function(u) {
+	return u.email === email;
+    });
+}
+
+function getUserByHashedName(hash) {
+    return readUserData().users.filter(function(u) {
+	return u.hash === hash;
+    });
+}
+
+function createAccount(account) {
+    if(account["password"] === undefined) {
+	servicelog("Received account creation data without password");
+	return false;
+    }
+    var userData = readUserData();
+    if(userData.users.filter(function(u) {
+	return u.username === account.username;
+    }).length !== 0) {
+	servicelog("Cannot create an existing user account");
+	return false;
+    } else {
+	var newAccount = { username: account.username,
+			   hash: sha1.hash(account.username),
+			   password: account.password,
+			   priviliges:"user",
+			   teams: [] };
+	if(account["realname"] !== undefined) { newAccount.realname = account.realname; }
+	if(account["email"] !== undefined) { newAccount.email = account.email; }
+	if(account["phone"] !== undefined) { newAccount.phone = account.phone; }
+	userData.users.push(newAccount);
+	if(datastorage.write("users", userData) === false) {
+	    servicelog("User database write failed");
+	    return false;
+	} else {
+	    return true;
+	}
+    }
+}
+
+function validateAccountCode(code) {
+    var userData = datastorage.read("pending");
+    if(Object.keys(userData.pending).length === 0) {
+	servicelog("Empty pending requests database, bailing out");
+	return false;
+    } 
+    var target = userData.pending.filter(function(u) {
+	return u.token.mail === code.slice(0, 8);
+    });
+    if(target.length === 0) {
+	return false;
+    } else {
+	var newUserData = { pending : [] };
+	newUserData.pending = userData.pending.filter(function(u) {
+	    return u.token.mail !== code.slice(0, 8);
+	});
+
+	if(datastorage.write("pending", newUserData) === false) {
+	    servicelog("Pending requests database write failed");
+	} else {
+	    servicelog("Removed pending request from database");
+	}
+	return target[0];
+    }
+}
+
+function sendVerificationEmail(cookie, recipientAddress) {
+    var pendingData = datastorage.read("pending");
     var emailData = datastorage.read("email");
-    setStatustoClient(connection, "Sending email: " + details.sentCount);
+    var timeout = new Date();
+    timeout.setHours(timeout.getHours() + 24);
+    var request = { email: recipientAddress,
+		    token: generateEmailToken(recipientAddress),
+		    date: timeout.getTime() };
+    pendingData.pending.push(request);
+    if(datastorage.write("pending", pendingData) === false) {
+	servicelog("Pending database write failed");
+    }
+    if(getUserByEmail(recipientAddress).length === 0) {
+	var emailSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_REQUEST_SUBJECT");
+	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+						       "NEW_ACCOUNT_REQUEST_GREETING"),
+				       (request.token.mail + request.token.key));
+    } else {
+	var emailSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_SUBJECT");
+	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
+						       "PASSWORD_RESET_GREETING"),
+				       getUserByEmail(recipientAddress)[0].username,
+				       (request.token.mail + request.token.key));
+    }
+    sendEmail(cookie, emailSubject, emailBody, recipientAddress, "account verification");
+}
+
+function sendReservationEmail(cookie, reservationTotals) { }
+
+function sendEmail(cookie, emailSubject, emailBody, recipientAddress, logline) {
+    var emailData = datastorage.read("email");
     if(emailData.blindlyTrust) {
 	servicelog("Trusting self-signed certificates");
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -170,133 +552,132 @@ function sendEmail(connection, details, filename) {
 	password: emailData.password,
 	host: emailData.host,
 	ssl: emailData.ssl
-    }).send({ text: details.text,
+    }).send({ text: emailBody,
 	      from: emailData.sender,
-	      to: details.address,
-	      subject: details.subject,
-	      attachment: [ { path: filename,
-			      type: "application/pdf",
-			      name: details.filename } ]
-	    }, function(err, message) {
-		if(err) {
-		    servicelog(err + " : " + JSON.stringify(message));
-		    globalSentMailList.push({ failed: filename });
-		    fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
-		    setStatustoClient(connection, "Failed sending email: " + details.sentCount);
-		} else {
-		    globalSentMailList.push({ passed: filename });
-		    fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
-		    setStatustoClient(connection, "Sent email: " + details.sentCount);
-		}
-	    });
+	      to: recipientAddress,
+	      subject: emailSubject }, function(err, message) {
+		  if(err) {
+		      servicelog(err + " : " + JSON.stringify(message));
+		      setStatustoClient(cookie, "Failed sending email!");
+		  } else {
+		      servicelog("Sent " + logline + " email to " + recipientAddress);
+		      setStatustoClient(cookie, "Sent email");
+		  }
+	      });
 }
 
-function printPreview(callback, connectionIndex, customer, selectedInvoices)
-{
-    var customerData = datastorage.read("customers");
-    var companyData = datastorage.read("company");
-    var invoiceData = datastorage.read("invoices");
-    var filename = "./temp/preview.pdf";
-    var now = new Date();
-
-   var invoice = invoiceData.invoices.map(function(a,b) {
-	if(selectedInvoices.indexOf(b) > -1) { return a; }
-    }).filter(function(s){ return s; });
-
-    if(invoice.length == 0) {
-	servicelog("Invoice empty, not creating PDF preview document");
-	setStatustoClient(globalConnectionList[connectionIndex].connection, "No preview available");
-	return null;
-    }
- 
-    var company = companyData.map(function(s) {
-	if(s.id === customerData[customer].team) { return s }
-    }).filter(function(s){ return s; })[0];
-
-    var bill = { company: company.name,
-		 bankName: company.bankName,
-		 bic: company.bic,
-		 iban: company.iban,
-		 customer: customerData[customer].name,
-		 reference: customerData[customer].reference,
-		 date: getNiceDate(now),
-		 number: "",
-		 id: "",
-		 intrest: "",
-		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		 notice: "" }
-
-    pdfprinter.printSheet(callback, connectionIndex, {}, filename, bill, invoice);
-    servicelog("Created PDF preview document");
+function generateEmailToken(email) {
+    return { mail: sha1.hash(email).slice(0, 8),
+	     key: sha1.hash(globalSalt + JSON.stringify(new Date().getTime())).slice(0, 16) };
 }
 
-function sendBulkEmail(connection, emailText, allInvoices) {
+function getNewChallenge() {
+    return ("challenge_" + sha1.hash(globalSalt + new Date().getTime().toString()) + "1");
+}
+
+
+
+// ---------
+
+
+function createUserInvoiceData(username) {
+    var user = getUserByUserName(username)[0];
     var customerData = datastorage.read("customers");
-    var companyData = datastorage.read("company");
     var invoiceData = datastorage.read("invoices");
-    var now = new Date();
-    var billNumber = getniceDateTime(now);
-    var customerCount = 0;
-
-    if(allInvoices.length === 0) {
-	servicelog("Invoice empty, not emailing PDF documents");
-	setStatustoClient(connection, "No mailing available");
-	return null;
-    }
-
-    allInvoices.forEach(function(currentCustomer) {
-	customerCount++;
-	var customer = customerData.map(function(a, b) {
-	    if(currentCustomer.id === b) { return a; }
-	}).filter(function(s){ return s; })[0];
-	var invoiceRows = invoiceData.invoices.map(function(a, b) {
-	    if(currentCustomer.invoices.indexOf(b+1) > -1) { return a; }
-	}).filter(function(s){ return s; });
-	var company = companyData.map(function(s) {
-	    if(s.id === customer.team) { return s }
-	}).filter(function(s){ return s; })[0];
-
-	var bill = { company: company.name,
-		     bankName: company.bankName,
-		     bic: company.bic,
-		     iban: company.iban,
-		     customer: customer.name,
-		     reference: customer.reference,
-		     date: getNiceDate(now),
-		     number: billNumber,
-		     id: "",
-		     intrest: "",
-		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		     notice: "" }
-
-	var customerName = customer.name.replace(" ", "_");
-	customerName = customerName.replace("/", "_");
-	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
-	var emailDetails = { address: customer.email,
-			     subject: "Uusi lasku " + company.name + " / " + billNumber,
-			     text: emailText,
-			     filename: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf",
-			     sentCount: customerCount }
-
-	pdfprinter.printSheet(sendEmail, connection, emailDetails, filename, bill, invoiceRows);
-	servicelog("Sent PDF emails");
+    var companyData = datastorage.read("company");
+    var ownCustomers = [];
+    customerData.customers.forEach(function(customer) {
+	if(user.teams.indexOf(customer.team) >= 0) {
+	    ownCustomers.push(customer);
+	}
+    });
+    var ownInvoices = [];
+    invoiceData.invoices.forEach(function(item) {
+	if(user.username === item.user) {
+	    ownInvoices.push(item);
+	}
+    });
+    var ownCompany = [];
+    companyData.company.forEach(function(company) {
+	if(user.teams.indexOf(company.id) >= 0) {
+	    ownCompany.push(company);
+	}
     });
 
+    return { customers : ownCustomers, invoices : ownInvoices, company : ownCompany };
 }
 
-servicelog("Waiting for client connection to port 8080...");
 
-if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
-if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
-if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
+// ---------
+
+
+function getLanguageText(language, tag) {
+    var langData = datastorage.read("language");
+    var langIndex = langData.language.indexOf(language);
+    if(++langIndex === 0) { return false; }
+    if(langData.substitution.filter(function(f) { return f.tag === tag }).length === 0) { return false; }
+    return langData.substitution.filter(function(f) { return f.tag === tag })[0]["LANG" + langIndex];
+}
+
+function fillTagsInText(text) {
+    for(var i = 1; i < arguments.length; i++) {
+	var substituteString = "_SUBSTITUTE_TEXT_" + i + "_";
+	text = text.replace(substituteString, arguments[i]);
+    }
+    return text;
+}
+
+setInterval(function() {
+    var now = new Date().getTime();
+    var userData = datastorage.read("pending");
+    if(Object.keys(userData.pending).length === 0) {
+	servicelog("No pending requests to purge");
+	return;
+    }
+    
+    var purgeCount = 0
+    var newUserData = { pending : [] };
+    userData.pending.forEach(function(r) {
+	if(r.date < now) {
+	    purgeCount++;
+	} else {
+	    newUserData.pending.push(r);
+	}
+    });
+
+    if(purgeCount === 0) {
+	servicelog("No pending requests timeouted");
+	return;
+    } else {
+	if(datastorage.write("pending", newUserData) === false) {
+	    servicelog("Pending requests database write failed");
+	} else {
+	    servicelog("Removed " + purgeCount + " timeouted pending requests");
+	}
+    }
+}, 1000*60*60);
 
 // datastorage.setLogger(servicelog);
-datastorage.initialize("email");
-datastorage.initialize("login");
-datastorage.initialize("customers");
-datastorage.initialize("invoices");
-datastorage.initialize("company");
+datastorage.initialize("main", { main : { port : 8080,
+					  language : "english",
+					  adminEmailAddess : "you <username@your-email.com>",
+					  siteFullUrl : "http://url.to.pantterilasku/" } });
+datastorage.initialize("language", { language : [ "finnish" , "english" ],
+				     substitution : [] });
+datastorage.initialize("users", { users : [] }, true);
+datastorage.initialize("pending", { pending : [] }, true);
+datastorage.initialize("customers", { customers : [] }, true);
+datastorage.initialize("invoices", { invoices : [] }, true);
+datastorage.initialize("company", { company : [] }, true);
+datastorage.initialize("email", { host : "smtp.your-email.com",
+				  user : "username",
+				  password : "password",
+				  sender : "you <username@your-email.com>",
+				  ssl : true,
+				  blindlyTrust : true });
 
-globalLoginData = datastorage.read("login");
+var mainConfig = datastorage.read("main");
 
-serveClientPage();
+webServer.listen(mainConfig.main.port, function() {
+    servicelog("Waiting for client connection to port " + mainConfig.main.port + "...");
+});

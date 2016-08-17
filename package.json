@@ -5,12 +5,12 @@
     "invoice generator",
     "pdf"
   ],
-  "version": "0.0.2",
+  "version": "0.0.3",
   "homepage": "http://www.swagman.org/",
   "author": {
     "name": "Jussi Ohenoja",
     "email": "juice@swagman.org",
-    "url": "http://www.swagman.org/juice/pantterilasku/"
+    "url": "https://github.com/juiceme/pantterilasku.git"
   },
   "license": "GPL-3.0",
   "repository": {
