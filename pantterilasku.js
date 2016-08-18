@@ -512,14 +512,38 @@ function validateAccountCode(code) {
     }
 }
 
+function removePendingRequest(cookie, emailAdress) {
+    var userData = datastorage.read("pending");
+    if(Object.keys(userData.pending).length === 0) {
+	servicelog("Empty pending requests database, bailing out");
+	return;
+    }
+    if(userData.pending.filter(function(u) {
+	return u.email === emailAdress;
+    }).length !== 0) {
+	servicelog("Removing duplicate entry from pending database");
+	var newUserData = { pending : [] };
+	newUserData.pending = userData.pending.filter(function(u) {
+            return u.email !== emailAdress;
+	});
+	if(datastorage.write("pending", newUserData) === false) {
+            servicelog("Pending requests database write failed");
+	}
+    } else {
+	servicelog("no duplicate entries in pending database");
+    }
+}
+
 function sendVerificationEmail(cookie, recipientAddress) {
+    removePendingRequest(cookie, recipientAddress);
     var pendingData = datastorage.read("pending");
     var emailData = datastorage.read("email");
     var timeout = new Date();
+    var emailToken = generateEmailToken(recipientAddress);
     timeout.setHours(timeout.getHours() + 24);
     var request = { email: recipientAddress,
-		    token: generateEmailToken(recipientAddress),
-		    date: timeout.getTime() };
+                    token: emailToken,
+                    date: timeout.getTime() };
     pendingData.pending.push(request);
     if(datastorage.write("pending", pendingData) === false) {
 	servicelog("Pending database write failed");
