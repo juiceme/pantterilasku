@@ -220,19 +220,6 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 	}
     }).filter(function(s){ return s; });
 
-/*
-    var invoice = cookie.user.invoiceData.invoices.map(function(a, b) {
-	var index = selectedInvoices.map(function(e) {
-	    return e.item;
-	}).indexOf(b);
-	var tmpInvoice = cookie.user.invoiceData.invoices[index];
-	if(typeof(tmpInvoice) === 'object') {
-	    tmpInvoice.n = selectedInvoices[index].count;
-	};
-	return tmpInvoice;
-    }).filter(function(s){ return s; });
-*/
-
     servicelog(JSON.stringify(invoice));
 
     if(invoice.length == 0) {
@@ -628,12 +615,27 @@ function createUserInvoiceData(username) {
 	}
     });
 
+    ownCustomers = sortByKey(ownCustomers, "name");
     return { customers : ownCustomers, invoices : ownInvoices, company : ownCompany };
 }
 
 
 // ---------
 
+
+function sortByKey(array, key) {
+    return array.sort(function(a, b) {
+        var x = a[key];
+        var y = b[key];
+        if (typeof x == "string") {
+            x = (""+x).toLowerCase(); 
+        }
+        if (typeof y == "string") {
+            y = (""+y).toLowerCase();
+        }
+        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+    });
+}
 
 function getLanguageText(language, tag) {
     var langData = datastorage.read("language");
