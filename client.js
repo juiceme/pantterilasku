@@ -52,8 +52,18 @@ mySocket.onmessage = function (event) {
 function createUserView(invoiceData) {
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(invoiceData, sessionPassword, 128));
     var fieldset = document.createElement('fieldsetset');
+    fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(createCustomerTable(invoiceData));
+    fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(createInvoiceTable(invoiceData));
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(createInvoiceButtons(invoiceData));
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(createEmailText(invoiceData));
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(createSendButton(invoiceData));
+    fieldset.appendChild(document.createElement('br'));
     fieldset.id= "myDiv1";
     return fieldset;
 }
@@ -190,7 +200,217 @@ function getPreviewPdf(id, invoiceData) {
 
 function createInvoiceTable(invoiceData) {
     var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+    var hRow = tableHeader.insertRow(0);    
+    var hCell = hRow.insertCell(0);
+    hCell.innerHTML = "<b>Invoices</b>";
+    var count = 1;
+    invoiceData.invoices.forEach(function(name) {
+    hCell.innerHTML = "<b>Invoices</b>";
+	var row = document.createElement('tr');
+	var cell1 = document.createElement('td');
+	cell1.appendChild(document.createTextNode(count));
+	row.appendChild(cell1);
+	var cell2 = document.createElement('td');
+	cell2.appendChild(document.createTextNode(name.description));
+	row.appendChild(cell2);
+	var cell3 = document.createElement('td');
+	cell3.appendChild(document.createTextNode(name.price));
+	row.appendChild(cell3);
+	var cell4 = document.createElement('td');
+	cell4.appendChild(document.createTextNode(name.vat));
+	row.appendChild(cell4);
+	tableBody.appendChild(row);
+	count++;
+    });
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
     return table;
+}
+
+function createEmailText(invoiceData) {
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+    var textArea = document.createElement("textarea");
+    textArea.id = "myEmailTextArea"
+    textArea.setAttribute('cols',80);
+    textArea.setAttribute('rows', 5);
+    textArea.value = invoiceData.defaultEmailText;
+
+    var hRow = tableHeader.insertRow(0);    
+    var hCell = hRow.insertCell(0);
+    hCell.innerHTML = "<b>Email text:</b>";
+    var row = document.createElement('tr');
+    var cell1 = document.createElement('td');
+    cell1.appendChild(textArea);
+
+    row.appendChild(cell1);
+    tableBody.appendChild(row);
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    return table;
+}
+
+function createEditCustomersView(invoiceData) {
+    var fieldset = document.createElement('fieldsetset');
+    var acceptButton = document.createElement('button');
+    var cancelButton = document.createElement('button');
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+    var hRow = tableHeader.insertRow(0);
+    var hCell1 = hRow.insertCell(0);
+    hCell1.innerHTML = "<b>No.</b>";
+    var hCell2 = hRow.insertCell(1);
+    hCell2.innerHTML = "<b>Name</b>";
+    var hCell3 = hRow.insertCell(2);
+    hCell3.innerHTML = "<b>Email</b>";
+    var hCell4 = hRow.insertCell(3);
+    hCell4.innerHTML = "<b>Bank Reference</b>";
+    var hCell5 = hRow.insertCell(4);
+    hCell5.innerHTML = "<b>Team</b>";
+    var count = 1;
+    invoiceData.customers.forEach(function(c) {
+	var row = document.createElement('tr');
+
+	var cell0 = document.createElement('td');
+	cell0.appendChild(document.createTextNode(count));
+	row.appendChild(cell0);
+
+	var cell1 = document.createElement('td');
+	var txtA1 = document.createElement("textarea");
+	txtA1.id = "ta_" + count + "_1";
+	txtA1.setAttribute('cols', 30);
+	txtA1.setAttribute('rows', 1);
+	txtA1.value = c.name;
+	cell1.appendChild(txtA1);
+	row.appendChild(cell1);
+
+	var cell2 = document.createElement('td');
+	var txtA2 = document.createElement("textarea");
+	txtA2.id = "ta_" + count + "_2";
+	txtA2.setAttribute('cols', 30);
+	txtA2.setAttribute('rows', 1);
+	txtA2.value = c.email;
+	cell2.appendChild(txtA2);
+	row.appendChild(cell2);
+
+	var cell3 = document.createElement('td');
+	var txtA3 = document.createElement("textarea");
+	txtA3.id = "ta_" + count + "_3";
+	txtA3.setAttribute('cols', 25);
+	txtA3.setAttribute('rows', 1);
+	txtA3.value = c.reference;
+	cell3.appendChild(txtA3);
+	row.appendChild(cell3);
+
+	var cell4 = document.createElement('td');
+	cell4.appendChild(createTeamSelector(invoiceData.teams, c.team, count));
+	row.appendChild(cell4);
+
+	tableBody.appendChild(row);
+	count++;
+    });
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+
+    
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(table);
+    fieldset.appendChild(document.createElement('br'));
+    acceptButton.appendChild(document.createTextNode("Save!"));
+    acceptButton.onclick = function() { saveCustomerData(invoiceData); }
+    cancelButton.appendChild(document.createTextNode("Cancel!"));
+    cancelButton.onclick = function() { cancelCustomerData(invoiceData); }
+    fieldset.appendChild(acceptButton);
+    fieldset.appendChild(cancelButton);
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.id= "myDiv1";
+    return fieldset;
+}
+
+function createTeamSelector(teams, defaultTeam, id) {
+    var teamSelector = document.createElement('select');
+
+    teams.forEach(function(t) {
+	var teamOption = document.createElement('option')
+	teamOption.text = t;
+	teamOption.value = t;
+	teamSelector.add(teamOption);
+    });
+    teamSelector.value = defaultTeam;
+    teamSelector.id = "ts_" + id;
+    return teamSelector;
+}
+
+function createInvoiceButtons(invoiceData) {
+    var fieldset = document.createElement('fieldsetset');
+    var editCustomersButton = document.createElement('button');
+    var editInvoicessButton = document.createElement('button');
+    editCustomersButton.appendChild(document.createTextNode("Edit Customers"));
+    editCustomersButton.onclick = function() { editCustomers(invoiceData); }
+    editInvoicessButton.appendChild(document.createTextNode("Edit Invoicess"));
+    editInvoicessButton.onclick = function() { editInvoicess(invoiceData); }
+    fieldset.appendChild(editCustomersButton);
+    fieldset.appendChild(editInvoicessButton);
+    return fieldset;
+}
+
+function createSendButton(invoiceData) {
+    var sendEmailButton = document.createElement('button');
+    sendEmailButton.appendChild(document.createTextNode("Send All Emails!"));
+    sendEmailButton.onclick = function() { sendAllEmails(invoiceData); }
+    return sendEmailButton;
+}
+
+function editCustomers(invoiceData) {
+    document.body.replaceChild(createEditCustomersView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
+}
+
+function editInvoicess(invoiceData) {
+    document.body.replaceChild(createEditInvoicessView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
+}
+
+function sendAllEmails(invoiceData) {
+    var invoices = [];
+    var i = 0;
+    invoiceData.customers.forEach(function(s) {
+	var customer = { id:i, invoices: [] };
+	var j = 0;
+	var invoiceExists = false;
+	while(j < invoiceData.invoices.length) {
+	    var checkBox = "cb_" + i + "_" + j;
+	    if(document.getElementById(checkBox).checked == true) {
+		invoiceExists = true;
+		var listId = "ns_" + i + "_" + j;
+		var selection = document.getElementById(listId);
+		var value = selection.options[selection.selectedIndex].value;
+		customer.invoices.push({ item : j, count : value });
+	    }
+	    j++;
+	}
+	if(invoiceExists) { invoices.push(customer); }
+	i++;
+    });
+
+    if (confirm('Are you sure you want to bulk email invoices?')) {
+	var clientSendable = { emailText: document.getElementById("myEmailTextArea").value,
+			       invoices: invoices };
+	var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
+	var sendable = { type: "sendInvoices",
+			 content : encryptedSendable };
+	mySocket.send(JSON.stringify(sendable));
+    } else {
+	// Do nothing!
+    }
+
+    return false;
 }
 
 

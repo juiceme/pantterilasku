@@ -118,6 +118,8 @@ wsServer.on('request', function(request) {
 
 	    if((type === "getPdfPreview") &&
 	       stateIs(cookie, "loggedIn")) { processPdfPreview(cookie, content); }
+	    if((type === "sendInvoices") &&
+	       stateIs(cookie, "loggedIn")) { processSendInvoices(cookie, content); }
 
 	}
     });
@@ -204,6 +206,11 @@ function processPdfPreview(cookie, content) {
     printPreview(pushPreviewToClient, cookie, previewData.customer, previewData.invoices);
 }
 
+function processSendInvoices(cookie, content) {
+    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("*********" + JSON.stringify(invoiceData));
+}
+
 function printPreview(callback, cookie, customer, selectedInvoices)
 {
     var filename = "./temp/preview.pdf";
@@ -250,9 +257,6 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 }
 
 function pushPreviewToClient(cookie, dummy, filename) {
-
-    servicelog("*********pushing");
-
     if(filename == null) {
 	setStatustoClient(cookie, "No preview available");
         servicelog("No PDF preview available");
@@ -596,6 +600,8 @@ function createUserInvoiceData(username) {
     var customerData = datastorage.read("customers");
     var invoiceData = datastorage.read("invoices");
     var companyData = datastorage.read("company");
+    var defaultEmailText = invoiceData.defaultEmailText;
+
     var ownCustomers = [];
     customerData.customers.forEach(function(customer) {
 	if(user.teams.indexOf(customer.team) >= 0) {
@@ -616,7 +622,11 @@ function createUserInvoiceData(username) {
     });
 
     ownCustomers = sortByKey(ownCustomers, "name");
-    return { customers : ownCustomers, invoices : ownInvoices, company : ownCompany };
+    return { customers : ownCustomers,
+	     invoices : ownInvoices,
+	     company : ownCompany,
+	     defaultEmailText : defaultEmailText,
+	     teams : user.teams };
 }
 
 
