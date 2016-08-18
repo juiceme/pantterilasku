@@ -681,6 +681,10 @@ setInterval(function() {
     }
 }, 1000*60*60);
 
+if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
+if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
+if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
+
 // datastorage.setLogger(servicelog);
 datastorage.initialize("main", { main : { port : 8080,
 					  language : "english",
