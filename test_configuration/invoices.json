@@ -1,15 +1,15 @@
-{
-    "defaultEmailText" : "Here is a new invoice for you.",
-    "invoices" : [
-        { "description" : "Mömmöjä koko rahalla", "n" : "3",  "price" : "80.05", "vat"   : "0.0" },
-        { "description" : "Kamaa ja Sälää",  "n" : "1",  "price" : "11.40", "vat"   : "22.0" },
-        { "description" : "Tilppeitä, krumeluureja ja pulju vasenkätisellä kierteellä", "n" : "7", "price" : "19.90",  "vat"   : "16.5" },
-        { "description" : "farmikamaa, 1 tonnin erä", "n" : "1", "price" : "33,07", "vat" : "32.0" },
-        { "description" : "De Ja Vu ranskalaisittain", "n" : "2", "price" : "361.11", "vat" : "19.0" },
-        { "description" : "Nuppi Nuppi, Lipputangonnuppi", "n" : "1", "price" : "3,90", "vat"  : "22.0" },
-        { "description" : "Silly set of nuts & bolts, no known standard whatsoever", "n" : "3", "price" : "81.05", "vat" : "0.0" },
-        { "description" : "Fresh manure, in scaks of 1 metric tonne", "n" : "7", "price" : "16.30", "vat" : "32.5" },
-        { "description" : "Bling-blings and other stuffies", "n" : "1", "price" : "3.95", "vat" : "15.0" },
-        { "description" : "Set of company T-shitrs with logo", "n" : "2", "price" : "21.50", "vat" : "5.0" }
-    ]
-}
+{"file":"invoices","backup":true,"content":{
+  "defaultEmailText" : "Here is a new invoice for you.",
+  "invoices" : [
+    { "user":"juice", "description" : "Mömmöjä koko rahalla",  "price" : "80.05", "vat"   : "0.0" },
+    { "user":"juice", "description" : "Kamaa ja Sälää",  "price" : "11.40", "vat"   : "22.0" },
+    { "user":"juice", "description" : "Tilppeitä, krumeluureja ja pulju vasenkätisellä kierteellä", "price" : "19.90",  "vat"   : "16.5" },
+    { "user":"juice", "description" : "farmikamaa, 1 tonnin erä", "price" : "33,07", "vat" : "32.0" },
+    { "user":"juice", "description" : "De Ja Vu ranskalaisittain", "price" : "361.11", "vat" : "19.0" },
+    { "user":"juice", "description" : "Nuppi Nuppi, Lipputangonnuppi", "price" : "3,90", "vat"  : "22.0" },
+    { "user":"juice", "description" : "Silly set of nuts & bolts, no known standard whatsoever", "price" : "81.05", "vat" : "0.0" },
+    { "user":"juice", "description" : "Fresh manure, in scaks of 1 metric tonne", "price" : "16.30", "vat" : "32.5" },
+    { "user":"juice", "description" : "Bling-blings and other stuffies", "price" : "3.95", "vat" : "15.0" },
+    { "user":"juice", "description" : "Set of company T-shitrs with logo", "price" : "21.50", "vat" : "5.0" }
+  ]
+}}
