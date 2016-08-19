@@ -120,6 +120,10 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processPdfPreview(cookie, content); }
 	    if((type === "sendInvoices") &&
 	       stateIs(cookie, "loggedIn")) { processSendInvoices(cookie, content); }
+	    if((type === "resetToMain") &&
+	       stateIs(cookie, "loggedIn")) { processResetToMainState(cookie, content); }
+	    if((type === "saveCustomerList") &&
+	       stateIs(cookie, "loggedIn")) { processSaveCustomerList(cookie, content); }
 
 	}
     });
@@ -196,6 +200,26 @@ function processLoginResponse(cookie, content) {
 	servicelog("User login failed");
 	processClientStarted(cookie);
     }
+}
+
+function processResetToMainState(cookie, content) {
+    var sendable;
+    servicelog("User session reset to main state");
+    cookie.user.invoiceData = createUserInvoiceData(cookie.user.username);
+    sendable = { type: "invoiceData",
+		 content: cookie.user.invoiceData };
+    sendCipherTextToClient(cookie, sendable);
+    servicelog("Sent invoiceData to client #" + cookie.count);
+}
+
+function processSaveCustomerList(cookie, content) {
+    var sendable;
+    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requests customer list saving: " + JSON.stringify(invoiceData.customers));
+    sendable = { type: "invoiceData",
+		 content: cookie.user.invoiceData };
+    sendCipherTextToClient(cookie, sendable);
+    servicelog("Sent invoiceData to client #" + cookie.count);
 }
 
 function processPdfPreview(cookie, content) {
@@ -462,7 +486,7 @@ function createAccount(account) {
 	var newAccount = { username: account.username,
 			   hash: sha1.hash(account.username),
 			   password: account.password,
-			   priviliges:"user",
+			   priviliges: [ "view" ],
 			   teams: [] };
 	if(account["realname"] !== undefined) { newAccount.realname = account.realname; }
 	if(account["email"] !== undefined) { newAccount.email = account.email; }
@@ -626,7 +650,8 @@ function createUserInvoiceData(username) {
 	     invoices : ownInvoices,
 	     company : ownCompany,
 	     defaultEmailText : defaultEmailText,
-	     teams : user.teams };
+	     teams : user.teams,
+	     priviliges : user.priviliges };
 }
 
 

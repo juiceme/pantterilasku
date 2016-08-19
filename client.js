@@ -115,9 +115,12 @@ function createCustomerTable(invoiceData) {
 	    var checkBox = document.createElement('input');
 	    checkBox.type = "checkbox";
 	    checkBox.id = "cb_" + clientCount + "_" + i;
+	    checkBox.customer = clientCount;
+	    checkBox.invoiceCount = invoiceData.invoices.length;
 	    checkBox.value = "0"
 	    checkBox.onclick = function() {
 		toggleSelectionList(this);
+		togglePreviewLink(this);
 	    }
 	    cellN.appendChild(checkBox);
 	    cellN.appendChild(createSelectionList(clientCount, i));
@@ -128,10 +131,11 @@ function createCustomerTable(invoiceData) {
 	var previewLink = document.createElement('a');
 	var previewText = document.createTextNode("preview PDF");
 	previewLink.appendChild(previewText);
-	previewLink.id = clientCount;
+	previewLink.id = "pl_" + clientCount;
 	previewLink.onclick = function() { getPreviewPdf(previewLink.id, invoiceData); }
 	previewLink.title = "preview PDF";
 	previewLink.href = "#";
+	previewLink.style.visibility = "hidden";
 	cellP.appendChild(previewLink);
 	row.appendChild(cellP);
 	tableBody.appendChild(row);
@@ -160,10 +164,12 @@ function toggleAllBoxes(index, state, customers) {
     customers.forEach(function(s) {
 	var checkBox = "cb_" + i + "_" + index;
 	var listId = "ns_" + i + "_" + index;
+	var linkId = "pl_" + i;
 	var visibility;
 	document.getElementById(checkBox).checked = state;
 	if(state) { visibility = "visible"; } else { visibility = "hidden"; }
 	document.getElementById(listId).style.visibility = visibility;
+	document.getElementById(linkId).style.visibility = visibility;
 	i++;
     });
     return false;
@@ -175,6 +181,20 @@ function toggleSelectionList(checkBox) {
     if(checkBox.checked) { visibility = "visible"; } else { visibility = "hidden"; }
     document.getElementById(listId).style.visibility = visibility;
     return false;
+}
+
+function togglePreviewLink(checkBox) {
+    linkVisible = false;
+    for(i=0; i<checkBox.invoiceCount; i++) {
+	if(document.getElementById("cb_" + checkBox.customer + "_" + i).checked == true) {
+	    linkVisible = true;
+	}
+    }
+    if(linkVisible) {
+	document.getElementById("pl_" + checkBox.customer).style.visibility = "visible";
+    } else {
+	document.getElementById("pl_" + checkBox.customer).style.visibility = "hidden";
+    }
 }
 
 function getPreviewPdf(id, invoiceData) {
@@ -273,46 +293,11 @@ function createEditCustomersView(invoiceData) {
     hCell5.innerHTML = "<b>Team</b>";
     var count = 1;
     invoiceData.customers.forEach(function(c) {
-	var row = document.createElement('tr');
-
-	var cell0 = document.createElement('td');
-	cell0.appendChild(document.createTextNode(count));
-	row.appendChild(cell0);
-
-	var cell1 = document.createElement('td');
-	var txtA1 = document.createElement("textarea");
-	txtA1.id = "ta_" + count + "_1";
-	txtA1.setAttribute('cols', 30);
-	txtA1.setAttribute('rows', 1);
-	txtA1.value = c.name;
-	cell1.appendChild(txtA1);
-	row.appendChild(cell1);
-
-	var cell2 = document.createElement('td');
-	var txtA2 = document.createElement("textarea");
-	txtA2.id = "ta_" + count + "_2";
-	txtA2.setAttribute('cols', 30);
-	txtA2.setAttribute('rows', 1);
-	txtA2.value = c.email;
-	cell2.appendChild(txtA2);
-	row.appendChild(cell2);
-
-	var cell3 = document.createElement('td');
-	var txtA3 = document.createElement("textarea");
-	txtA3.id = "ta_" + count + "_3";
-	txtA3.setAttribute('cols', 25);
-	txtA3.setAttribute('rows', 1);
-	txtA3.value = c.reference;
-	cell3.appendChild(txtA3);
-	row.appendChild(cell3);
-
-	var cell4 = document.createElement('td');
-	cell4.appendChild(createTeamSelector(invoiceData.teams, c.team, count));
-	row.appendChild(cell4);
-
-	tableBody.appendChild(row);
+	tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, c, false));
 	count++;
     });
+    newCustomer = { name : "", email : "", reference : "", team : invoiceData.teams[0] };
+    tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, newCustomer, true));
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
 
@@ -321,14 +306,77 @@ function createEditCustomersView(invoiceData) {
     fieldset.appendChild(table);
     fieldset.appendChild(document.createElement('br'));
     acceptButton.appendChild(document.createTextNode("Save!"));
-    acceptButton.onclick = function() { saveCustomerData(invoiceData); }
+    acceptButton.onclick = function() { saveCustomerDataEdit(invoiceData); }
     cancelButton.appendChild(document.createTextNode("Cancel!"));
-    cancelButton.onclick = function() { cancelCustomerData(invoiceData); }
+    cancelButton.onclick = function() { cancelCustomerDataEdit(invoiceData); }
     fieldset.appendChild(acceptButton);
     fieldset.appendChild(cancelButton);
     fieldset.appendChild(document.createElement('br'));
     fieldset.id= "myDiv1";
+    if(!havePrivilige(invoiceData.priviliges, "customeredit")) {
+	acceptButton.disabled = true;
+	alert("You only have VIEW priviliges, you cannot save your changes.");
+    }
     return fieldset;
+}
+
+function createCustomerEditTableRow(count, invoiceData, customer, lastRow) {
+    var row = document.createElement('tr');
+
+    var cell0 = document.createElement('td');
+    cell0.appendChild(document.createTextNode(count));
+    row.appendChild(cell0);
+
+    var cell1 = document.createElement('td');
+    var txtA1 = document.createElement("textarea");
+    txtA1.id = "ta_" + count + "_name";
+    txtA1.setAttribute('cols', 30);
+    txtA1.setAttribute('rows', 1);
+    txtA1.value = customer.name;
+    cell1.appendChild(txtA1);
+    row.appendChild(cell1);
+
+    var cell2 = document.createElement('td');
+    var txtA2 = document.createElement("textarea");
+    txtA2.id = "ta_" + count + "_email";
+    txtA2.setAttribute('cols', 30);
+    txtA2.setAttribute('rows', 1);
+    txtA2.value = customer.email;
+    cell2.appendChild(txtA2);
+    row.appendChild(cell2);
+
+    var cell3 = document.createElement('td');
+    var txtA3 = document.createElement("textarea");
+    txtA3.id = "ta_" + count + "_reference";
+    txtA3.setAttribute('cols', 25);
+    txtA3.setAttribute('rows', 1);
+    txtA3.value = customer.reference;
+    cell3.appendChild(txtA3);
+    row.appendChild(cell3);
+
+    var cell4 = document.createElement('td');
+    var teamSelector = createTeamSelector(invoiceData.teams, customer.team, count);
+    teamSelector.id = "ta_" + count + "_teamSelector";
+    cell4.appendChild(teamSelector);
+    row.appendChild(cell4);
+
+    var cell5 = document.createElement('td');
+    if(lastRow) {
+	var addButton = document.createElement("button");
+	addButton.appendChild(document.createTextNode("Create"));
+	addButton.id = count;
+	addButton.onclick = function() { createCustomerToList(invoiceData, this); }
+	cell5.appendChild(addButton);
+    } else {
+	var deleteButton = document.createElement("button");
+	deleteButton.appendChild(document.createTextNode("Delete"));
+	deleteButton.id = count;
+	deleteButton.onclick = function() { deleteCustomerFromList(invoiceData, this); }
+	cell5.appendChild(deleteButton);
+    }
+    row.appendChild(cell5);
+
+    return row;
 }
 
 function createTeamSelector(teams, defaultTeam, id) {
@@ -343,6 +391,33 @@ function createTeamSelector(teams, defaultTeam, id) {
     teamSelector.value = defaultTeam;
     teamSelector.id = "ts_" + id;
     return teamSelector;
+}
+
+function getSelectedTeam(id) {
+    teamSelector = document.getElementById(id);
+    return teamSelector.options[teamSelector.selectedIndex].value;
+}
+
+function deleteCustomerFromList(invoiceData, button) {
+    console.log(JSON.stringify(button.id));
+    newCustomers = invoiceData.customers.map(function(a,b) {
+	if(b != (button.id - 1)) { return a; }
+    }).filter(function(s){ return s; });
+    invoiceData.customers = newCustomers;
+    document.body.replaceChild(createEditCustomersView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
+}
+
+function createCustomerToList(invoiceData, button) {
+    var newCustomer = { name : document.getElementById("ta_" + button.id + "_name").value,
+			email : document.getElementById("ta_" + button.id + "_email").value,
+			reference : document.getElementById("ta_" + button.id + "_reference").value,
+			team : getSelectedTeam("ta_" + button.id + "_teamSelector") };
+    invoiceData.customers.push(newCustomer);
+    document.body.replaceChild(createEditCustomersView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
 }
 
 function createInvoiceButtons(invoiceData) {
@@ -375,6 +450,14 @@ function editInvoicess(invoiceData) {
     document.body.replaceChild(createEditInvoicessView(invoiceData),
 			       document.getElementById("myDiv1"));
     return false;
+}
+
+function saveCustomerDataEdit(invoiceData) {
+    sendToServerEncrypted("saveCustomerList", invoiceData);
+}
+
+function cancelCustomerDataEdit(invoiceData) {
+    sendToServerEncrypted("resetToMain", {});
 }
 
 function sendAllEmails(invoiceData) {
@@ -413,6 +496,10 @@ function sendAllEmails(invoiceData) {
     return false;
 }
 
+function havePrivilige(priviligeList, privilige) {
+    if(priviligeList.indexOf(privilige) < 0) { return false; }
+    else { return true; }
+}
 
 // ----------------
 
