@@ -124,6 +124,8 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processResetToMainState(cookie, content); }
 	    if((type === "saveCustomerList") &&
 	       stateIs(cookie, "loggedIn")) { processSaveCustomerList(cookie, content); }
+	    if((type === "saveInvoiceList") &&
+	       stateIs(cookie, "loggedIn")) { processSaveInvoiceList(cookie, content); }
 
 	}
     });
@@ -191,13 +193,19 @@ function processLoginResponse(cookie, content) {
 	servicelog("User login OK");
 	setState(cookie, "loggedIn");
 	setStatustoClient(cookie, "Login OK");
-	cookie.user.invoiceData = createUserInvoiceData(cookie.user.username);
-        sendable = { type: "invoiceData",
-		     content: cookie.user.invoiceData };
-	sendCipherTextToClient(cookie, sendable);
-	servicelog("Sent invoiceData to client #" + cookie.count);
+	if(getUserPriviliges(cookie.user).length === 0) {
+	    sendable = { type: "unpriviligedLogin", content: "<b>Käyttäjätunnuksesi on luotu onnistuneesti.</b><br><br>Jotta voit aloittaa Pantterilaskun käytön, pyydä käyttöoikeudet ylläpidolta;<br><br>Lähetä söhköpostia osoitteeseen juice@swagman.org ja kerro joukkueesi nimi." };
+	    sendCipherTextToClient(cookie, sendable);
+	    servicelog("Sent unpriviligedLogin info to client #" + cookie.count);
+	} else {
+	    cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+            sendable = { type: "invoiceData",
+			 content: cookie.invoiceData };
+	    sendCipherTextToClient(cookie, sendable);
+	    servicelog("Sent invoiceData to client #" + cookie.count);
+	}
     } else {
-	servicelog("User login failed");
+	servicelog("User login failed on client #" + cookie.count);
 	processClientStarted(cookie);
     }
 }
@@ -205,9 +213,9 @@ function processLoginResponse(cookie, content) {
 function processResetToMainState(cookie, content) {
     var sendable;
     servicelog("User session reset to main state");
-    cookie.user.invoiceData = createUserInvoiceData(cookie.user.username);
+    cookie.invoiceData = createUserInvoiceData(cookie.user.username);
     sendable = { type: "invoiceData",
-		 content: cookie.user.invoiceData };
+		 content: cookie.invoiceData };
     sendCipherTextToClient(cookie, sendable);
     servicelog("Sent invoiceData to client #" + cookie.count);
 }
@@ -216,8 +224,28 @@ function processSaveCustomerList(cookie, content) {
     var sendable;
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
     servicelog("Client #" + cookie.count + " requests customer list saving: " + JSON.stringify(invoiceData.customers));
-    sendable = { type: "invoiceData",
-		 content: cookie.user.invoiceData };
+    if(userHasCustomerEditPrivilige(cookie.user)) {
+	updateCustomersFromClient(cookie, invoiceData.customers);
+	cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+    } else {
+	servicelog("user has insufficent priviliges to edit customer tables");
+    }
+    sendable = { type: "invoiceData", content: cookie.invoiceData };
+    sendCipherTextToClient(cookie, sendable);
+    servicelog("Sent invoiceData to client #" + cookie.count);
+}
+
+function processSaveInvoiceList(cookie, content) {
+    var sendable;
+    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requests invoice list saving: " + JSON.stringify(invoiceData.invoices));
+    if(userHasInvoiceEditPrivilige(cookie.user)) {
+	updateInvoicesFromClient(cookie, invoiceData.invoices);
+	cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+    } else {
+	servicelog("user has insufficent priviliges to edit invoice tables");
+    }
+    sendable = { type: "invoiceData", content: cookie.invoiceData };
     sendCipherTextToClient(cookie, sendable);
     servicelog("Sent invoiceData to client #" + cookie.count);
 }
@@ -240,7 +268,7 @@ function printPreview(callback, cookie, customer, selectedInvoices)
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
-    var invoice = cookie.user.invoiceData.invoices.map(function(a, b) {
+    var invoice = cookie.invoiceData.invoices.map(function(a, b) {
 	if(selectedInvoices.map(function(e) {
 	    return e.item;
 	}).indexOf(b) >= 0) {
@@ -258,17 +286,17 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 	setStatustoClient(cookie, "No preview available");
 	return null;
     }
- 
-    var company = cookie.user.invoiceData.company.map(function(s) {
-	if(s.id === cookie.user.invoiceData.customers[customer].team) { return s }
+  
+    var company = cookie.invoiceData.company.map(function(s) {
+	if(s.id === cookie.invoiceData.customers[customer].team) { return s }
     }).filter(function(s){ return s; })[0];
 
     var bill = { company: company.name,
 		 bankName: company.bankName,
 		 bic: company.bic,
 		 iban: company.iban,
-		 customer: cookie.user.invoiceData.customers[customer].name,
-		 reference: cookie.user.invoiceData.customers[customer].reference,
+		 customer: cookie.invoiceData.customers[customer].name,
+		 reference: cookie.invoiceData.customers[customer].reference,
 		 date: getNiceDate(now),
 		 number: "",
 		 id: "",
@@ -302,6 +330,58 @@ function pushPreviewToClient(cookie, dummy, filename) {
 		     content: pdfFile };
     sendCipherTextToClient(cookie, sendable);
     setStatustoClient(cookie, "OK");
+}
+
+function updateCustomersFromClient(cookie, customers) {
+    var customerData = datastorage.read("customers");
+
+    var checkedCustomers = customers.map(function(c) {
+	if(cookie.user.teams.indexOf(c.team) >= 0) { return c; }
+    }).filter(function(s){ return s; });
+
+    var newCustomerData = { customers : [] };
+    customerData.customers.forEach(function(c) {
+	if(checkedCustomers.filter(function(f) {
+	    return (f.team === c.team);
+	}).length == 0) {
+	    newCustomerData.customers.push(c);
+	}
+    });
+    checkedCustomers.forEach(function(c) {
+	newCustomerData.customers.push(c);
+    });
+    
+    if(datastorage.write("customers", newCustomerData) === false) {
+	servicelog("Customer database write failed");
+    } else {
+	servicelog("Updated Customer database: " + JSON.stringify(newCustomerData));
+    }
+}
+
+function updateInvoicesFromClient(cookie, invoices) {
+    var invoiceData = datastorage.read("invoices");
+
+    var checkedInvoices = invoices.map(function(c) {
+	if(c.user === cookie.user.username) { return c; }
+    }).filter(function(s){ return s; });
+
+    var newInvoiceData = { defaultEmailText : invoiceData.defaultEmailText, invoices : [] };
+    invoiceData.invoices.forEach(function(c) {
+	if(checkedInvoices.filter(function(f) {
+	    return (f.user === c.user);
+	}).length == 0) {
+	    newInvoiceData.invoices.push(c);
+	}
+    });
+    checkedInvoices.forEach(function(c) {
+	newInvoiceData.invoices.push(c);
+    });
+    
+    if(datastorage.write("invoices", newInvoiceData) === false) {
+	servicelog("Invoice database write failed");
+    } else {
+	servicelog("Updated Invoice database: " + JSON.stringify(newInvoiceData));
+    }
 }
 
 function processCreateAccount(cookie, content) {
@@ -453,6 +533,24 @@ function updateUserAccount(cookie, account) {
     }
 }
 
+function userHasCustomerEditPrivilige(user) {
+    if(user.priviliges.length === 0) { return false; }
+    if(user.priviliges.indexOf("customer-edit") < 0) { return false; }
+    return true;
+}
+
+function userHasInvoiceEditPrivilige(user) {
+    if(user.priviliges.length === 0) { return false; }
+    if(user.priviliges.indexOf("invoice-edit") < 0) { return false; }
+    return true;
+}
+
+function getUserPriviliges(user) {
+    if(user.priviliges.length === 0) { return []; }
+    if(user.priviliges.indexOf("none") > -1) { return []; }
+    return user.priviliges;
+}
+
 function getUserByUserName(username) {
     return readUserData().users.filter(function(u) {
 	return u.username === username;
@@ -486,7 +584,7 @@ function createAccount(account) {
 	var newAccount = { username: account.username,
 			   hash: sha1.hash(account.username),
 			   password: account.password,
-			   priviliges: [ "view" ],
+			   priviliges: [ "none" ],
 			   teams: [] };
 	if(account["realname"] !== undefined) { newAccount.realname = account.realname; }
 	if(account["email"] !== undefined) { newAccount.email = account.email; }
@@ -650,6 +748,7 @@ function createUserInvoiceData(username) {
 	     invoices : ownInvoices,
 	     company : ownCompany,
 	     defaultEmailText : defaultEmailText,
+	     user : user.username,
 	     teams : user.teams,
 	     priviliges : user.priviliges };
 }

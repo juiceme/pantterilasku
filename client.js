@@ -30,6 +30,17 @@ mySocket.onmessage = function (event) {
  	document.body.replaceChild(createNewAccountView(account), document.getElementById("myDiv1"));
     }
 
+    if(receivable.type == "unpriviligedLogin") {
+	var helpText = JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128));
+	document.body.replaceChild(createLogoutButton(),
+				   document.getElementById("myLogoutButton"));
+	document.body.replaceChild(createUnpriviligedView(helpText),
+				   document.getElementById("myDiv1"));
+	var helpTextDiv = document.createElement('div');
+	helpTextDiv.id = "myHelpText"
+	document.body.replaceChild(helpTextDiv, document.getElementById("myHelpText"));
+    }
+
     if(receivable.type == "invoiceData") {
 	var invoiceData = receivable.content;
 	document.body.replaceChild(createLogoutButton(),
@@ -48,6 +59,20 @@ mySocket.onmessage = function (event) {
 
 // --------------
 
+function createUnpriviligedView(helpText) {
+    var fieldset = document.createElement('fieldsetset');
+    var table = document.createElement('table');
+    var row = document.createElement('tr');
+    var cell = document.createElement('td');
+    fieldset.appendChild(document.createElement('br'));
+    cell.innerHTML = helpText;
+    row.appendChild(cell);
+    table.appendChild(row);
+    fieldset.appendChild(table);
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.id = "myDiv1";
+    return fieldset;
+}
 
 function createUserView(invoiceData) {
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(invoiceData, sessionPassword, 128));
@@ -82,11 +107,10 @@ function createCustomerTable(invoiceData) {
     var hCell2 = hRow1.insertCell(0);
     hCell0.colSpan = "2";
     hCell0.rowSpan = "2";
-    hCell1.colSpan = invoiceData.invoices.length;
+    hCell1.colSpan = 6;
     hCell0.innerHTML = "<b>Customer</b>";
     hCell1.innerHTML = "<b>Invoices</b>";
-    var i = 0;
-    invoiceData.invoices.forEach(function(s) {
+    for(var i=0; i<6; i++) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
 	var checkBox = document.createElement('input');
@@ -94,13 +118,10 @@ function createCustomerTable(invoiceData) {
 	checkBox.id = i;
 	checkBox.value = "0"
 	checkBox.onclick = function() {
-	    toggleAllBoxes(checkBox.id,
-			   document.getElementById(checkBox.id).checked,
-			   invoiceData.customers);
+	    toggleAllBoxes(this, invoiceData.customers);
 	}
 	hCellN.appendChild(checkBox);
-	i++;
-    });
+    }
     invoiceData.customers.forEach(function(s) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -109,14 +130,12 @@ function createCustomerTable(invoiceData) {
 	cell1.appendChild(document.createTextNode(s.team));
 	row.appendChild(cell0);
 	row.appendChild(cell1);
-	var i = 0;
-	while(i < invoiceData.invoices.length) {
+	for(var i=0; i<6; i++) {
 	    var cellN = document.createElement('td');
 	    var checkBox = document.createElement('input');
 	    checkBox.type = "checkbox";
 	    checkBox.id = "cb_" + clientCount + "_" + i;
 	    checkBox.customer = clientCount;
-	    checkBox.invoiceCount = invoiceData.invoices.length;
 	    checkBox.value = "0"
 	    checkBox.onclick = function() {
 		toggleSelectionList(this);
@@ -125,14 +144,14 @@ function createCustomerTable(invoiceData) {
 	    cellN.appendChild(checkBox);
 	    cellN.appendChild(createSelectionList(clientCount, i));
 	    row.appendChild(cellN);
-	    i++;
 	}
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
 	var previewText = document.createTextNode("preview PDF");
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
-	previewLink.onclick = function() { getPreviewPdf(previewLink.id, invoiceData); }
+	previewLink.number = clientCount;
+	previewLink.onclick = function() { getPreviewPdf(this, invoiceData); }
 	previewLink.title = "preview PDF";
 	previewLink.href = "#";
 	previewLink.style.visibility = "hidden";
@@ -148,7 +167,7 @@ function createCustomerTable(invoiceData) {
 
 function createSelectionList(clientCount, index) {
     var numberSelector = document.createElement('select');
-    for(i = 1; i < 10; i++) {
+    for(var i=1; i<10; i++) {
 	var numberOption = document.createElement('option');
 	numberOption.text = i;
 	numberOption.value = i;
@@ -159,14 +178,15 @@ function createSelectionList(clientCount, index) {
     return numberSelector;
 }
 
-function toggleAllBoxes(index, state, customers) {
+function toggleAllBoxes(checkBox, customers) {
     var i=0;
+    var state = document.getElementById(checkBox.id).checked;
     customers.forEach(function(s) {
-	var checkBox = "cb_" + i + "_" + index;
-	var listId = "ns_" + i + "_" + index;
+	var subCheckBox = "cb_" + i + "_" + checkBox.id;
+	var listId = "ns_" + i + "_" + checkBox.id;
 	var linkId = "pl_" + i;
 	var visibility;
-	document.getElementById(checkBox).checked = state;
+	document.getElementById(subCheckBox).checked = state;
 	if(state) { visibility = "visible"; } else { visibility = "hidden"; }
 	document.getElementById(listId).style.visibility = visibility;
 	document.getElementById(linkId).style.visibility = visibility;
@@ -185,7 +205,7 @@ function toggleSelectionList(checkBox) {
 
 function togglePreviewLink(checkBox) {
     linkVisible = false;
-    for(i=0; i<checkBox.invoiceCount; i++) {
+    for(var i=0; i<6; i++) {
 	if(document.getElementById("cb_" + checkBox.customer + "_" + i).checked == true) {
 	    linkVisible = true;
 	}
@@ -197,20 +217,22 @@ function togglePreviewLink(checkBox) {
     }
 }
 
-function getPreviewPdf(id, invoiceData) {
+function getPreviewPdf(link, invoiceData) {
     var selectedInvoices = [];
-    var i = 0;
-    while(i < invoiceData.invoices.length) {
-	var checkBox = "cb_" + id + "_" + i;
+    for(var i=0; i<6; i++) {
+	var checkBox = "cb_" + link.number + "_" + i;
 	if(document.getElementById(checkBox).checked == true) {
-	    var listId = "ns_" + id + "_" + i;
-	    var selection = document.getElementById(listId);
-	    var value = selection.options[selection.selectedIndex].value;
-	    selectedInvoices.push({ item : i, count : value });
+	    var nSelection = document.getElementById("ns_" + link.number + "_" + i);
+	    var nValue = parseInt(nSelection.options[nSelection.selectedIndex].value);
+	    var iSelection = document.getElementById("is_" + i);
+	    var iValue = parseInt(iSelection.options[iSelection.selectedIndex].value);
+	    selectedInvoices.push({ item : iValue, count : nValue });
 	}
-	i++;
     }
-    var clientSendable = { customer: id, invoices: selectedInvoices };
+
+ //   var selectedInvoices = [{item:1,count:1},{item:2,count:1},{item:3,count:1}];
+
+    var clientSendable = { customer: link.number, invoices: selectedInvoices };
     var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
     var sendable = { type: "getPdfPreview",
 		     content : encryptedSendable };
@@ -223,31 +245,171 @@ function createInvoiceTable(invoiceData) {
     var tableHeader = document.createElement('thead');
     var tableBody = document.createElement('tbody');
     var hRow = tableHeader.insertRow(0);    
-    var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>Invoices</b>";
-    var count = 1;
-    invoiceData.invoices.forEach(function(name) {
-    hCell.innerHTML = "<b>Invoices</b>";
+    var hCell0 = hRow.insertCell(0);
+    var hCell1 = hRow.insertCell(1);
+    hCell0.innerHTML = "<b>Invoices</b>";
+    for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
+	var cell0 = document.createElement('td');
+	cell0.appendChild(document.createTextNode(i));
+	row.appendChild(cell0);
 	var cell1 = document.createElement('td');
-	cell1.appendChild(document.createTextNode(count));
+	var invoiceSelector = createInvoiceSelector(invoiceData.invoices);
+	invoiceSelector.id = "is_" + i;
+	invoiceSelector.value = i;
+	cell1.appendChild(invoiceSelector)
 	row.appendChild(cell1);
-	var cell2 = document.createElement('td');
-	cell2.appendChild(document.createTextNode(name.description));
-	row.appendChild(cell2);
-	var cell3 = document.createElement('td');
-	cell3.appendChild(document.createTextNode(name.price));
-	row.appendChild(cell3);
-	var cell4 = document.createElement('td');
-	cell4.appendChild(document.createTextNode(name.vat));
-	row.appendChild(cell4);
-	tableBody.appendChild(row);
-	count++;
-    });
+	table.appendChild(row);
+    }
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
     return table;
 }
+
+function createInvoiceSelector(invoices) {
+    var invoiceSelector = document.createElement('select');
+
+    for(i=0; i<invoices.length; i++) {
+	var invoiceOption = document.createElement('option')
+	invoiceOption.text = invoices[i].description;
+	invoiceOption.value = i;
+	invoiceSelector.add(invoiceOption);
+    }
+    return invoiceSelector;
+}
+
+function createEditInvoicesView(invoiceData) {
+    var fieldset = document.createElement('fieldsetset');
+    var acceptButton = document.createElement('button');
+    var cancelButton = document.createElement('button');
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+    var hRow = tableHeader.insertRow(0);    
+    var hCell1 = hRow.insertCell(0);
+    hCell1.innerHTML = "<b>Invoices</b>";
+    var hCell2 = hRow.insertCell(1);
+    hCell2.innerHTML = "<b>Item description</b>";
+    var hCell3 = hRow.insertCell(2);
+    hCell3.innerHTML = "<b>Price /each</b>";
+    var hCell4 = hRow.insertCell(3);
+    hCell4.innerHTML = "<b>Vat-%</b>";
+    var count = 1;
+    invoiceData.invoices.forEach(function(c) {
+	tableBody.appendChild(createInvoiceEditTableRow(count, invoiceData, c, false));
+	count++;
+    });
+    var newInvoice = { description : "<item>", price : "<0.00>", vat : "<0.00>" };
+    tableBody.appendChild(createInvoiceEditTableRow(count, invoiceData, newInvoice, true));
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(table);
+    fieldset.appendChild(document.createElement('br'));
+    acceptButton.appendChild(document.createTextNode("Save!"));
+    acceptButton.onclick = function() { saveInvoiceDataEdit(invoiceData); }
+    cancelButton.appendChild(document.createTextNode("Cancel!"));
+    cancelButton.onclick = function() { cancelInvoiceDataEdit(invoiceData); }
+    fieldset.appendChild(acceptButton);
+    fieldset.appendChild(cancelButton);
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.id= "myDiv1";
+    if(!havePrivilige(invoiceData.priviliges, "invoice-edit")) {
+	acceptButton.disabled = true;
+	alert("You only have VIEW priviliges, you cannot save your changes.");
+    }
+    return fieldset;
+}
+
+function saveInvoiceDataEdit(invoiceData) {
+    var count = 1;
+    invoiceData.invoices.forEach(function(c) {
+	c.user = invoiceData.user;
+	c.description = document.getElementById("ti_" + count + "_description").value;
+	c.price = document.getElementById("ti_" + count + "_price").value;
+	c.vat =  document.getElementById("ti_" + count + "_vat").value;
+	count++;
+    });
+    sendToServerEncrypted("saveInvoiceList", invoiceData);
+}
+
+function cancelInvoiceDataEdit(invoiceData) {
+    sendToServerEncrypted("resetToMain", {});
+}
+
+function createInvoiceEditTableRow(count, invoiceData, invoice, lastRow) {
+    var row = document.createElement('tr');
+
+    var cell0 = document.createElement('td');
+    cell0.appendChild(document.createTextNode(count));
+    row.appendChild(cell0);
+
+    var cell1 = document.createElement('td');
+    var txtA1 = document.createElement("textarea");
+    txtA1.id = "ti_" + count + "_description";
+    txtA1.setAttribute('cols', 30);
+    txtA1.setAttribute('rows', 1);
+    txtA1.value = invoice.description;
+    cell1.appendChild(txtA1);
+    row.appendChild(cell1);
+
+    var cell2 = document.createElement('td');
+    var txtA2 = document.createElement("textarea");
+    txtA2.id = "ti_" + count + "_price";
+    txtA2.setAttribute('cols', 30);
+    txtA2.setAttribute('rows', 1);
+    txtA2.value = invoice.price;
+    cell2.appendChild(txtA2);
+    row.appendChild(cell2);
+
+    var cell3 = document.createElement('td');
+    var txtA3 = document.createElement("textarea");
+    txtA3.id = "ti_" + count + "_vat";
+    txtA3.setAttribute('cols', 25);
+    txtA3.setAttribute('rows', 1);
+    txtA3.value = invoice.vat;
+    cell3.appendChild(txtA3);
+    row.appendChild(cell3);
+
+    var cell4 = document.createElement('td');
+    if(lastRow) {
+	var addButton = document.createElement("button");
+	addButton.appendChild(document.createTextNode("Create"));
+	addButton.id = count;
+	addButton.onclick = function() { createInvoiceToList(invoiceData, this); }
+	cell4.appendChild(addButton);
+    } else {
+	var deleteButton = document.createElement("button");
+	deleteButton.appendChild(document.createTextNode("Delete"));
+	deleteButton.id = count;
+	deleteButton.onclick = function() { deleteInvoiceFromList(invoiceData, this); }
+	cell4.appendChild(deleteButton);
+    }
+    row.appendChild(cell4);
+
+    return row;
+}
+
+function deleteInvoiceFromList(invoiceData, button) {
+    newInvoices = invoiceData.invoices.map(function(a,b) {
+	if(b != (button.id - 1)) { return a; }
+    }).filter(function(s){ return s; });
+    invoiceData.invoices = newInvoices;
+    document.body.replaceChild(createEditInvoicesView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
+}
+
+function createInvoiceToList(invoiceData, button) {
+    var newInvoice = { description : document.getElementById("ti_" + button.id + "_description").value,
+		       price : document.getElementById("ti_" + button.id + "_price").value,
+		       vat : document.getElementById("ti_" + button.id + "_vat").value };
+    invoiceData.invoices.push(newInvoice);
+    document.body.replaceChild(createEditInvoicesView(invoiceData),
+			       document.getElementById("myDiv1"));
+    return false;
+}
+
 
 function createEmailText(invoiceData) {
     var table = document.createElement('table');
@@ -296,11 +458,10 @@ function createEditCustomersView(invoiceData) {
 	tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, c, false));
 	count++;
     });
-    newCustomer = { name : "", email : "", reference : "", team : invoiceData.teams[0] };
+    var newCustomer = { name : "<name>", email : "<name@host>", reference : "<00000>", team : invoiceData.teams[0] };
     tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, newCustomer, true));
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
-
     
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(table);
@@ -313,7 +474,7 @@ function createEditCustomersView(invoiceData) {
     fieldset.appendChild(cancelButton);
     fieldset.appendChild(document.createElement('br'));
     fieldset.id= "myDiv1";
-    if(!havePrivilige(invoiceData.priviliges, "customeredit")) {
+    if(!havePrivilige(invoiceData.priviliges, "customer-edit")) {
 	acceptButton.disabled = true;
 	alert("You only have VIEW priviliges, you cannot save your changes.");
     }
@@ -399,7 +560,6 @@ function getSelectedTeam(id) {
 }
 
 function deleteCustomerFromList(invoiceData, button) {
-    console.log(JSON.stringify(button.id));
     newCustomers = invoiceData.customers.map(function(a,b) {
 	if(b != (button.id - 1)) { return a; }
     }).filter(function(s){ return s; });
@@ -447,12 +607,20 @@ function editCustomers(invoiceData) {
 }
 
 function editInvoicess(invoiceData) {
-    document.body.replaceChild(createEditInvoicessView(invoiceData),
+    document.body.replaceChild(createEditInvoicesView(invoiceData),
 			       document.getElementById("myDiv1"));
     return false;
 }
 
 function saveCustomerDataEdit(invoiceData) {
+    var count = 1;
+    invoiceData.customers.forEach(function(c) {
+	c.name = document.getElementById("ta_" + count + "_name").value;
+	c.email = document.getElementById("ta_" + count + "_email").value;
+	c.reference =  document.getElementById("ta_" + count + "_reference").value;
+	c.team = getSelectedTeam("ta_" + count + "_teamSelector");
+	count++;
+    });
     sendToServerEncrypted("saveCustomerList", invoiceData);
 }
 
@@ -467,7 +635,7 @@ function sendAllEmails(invoiceData) {
 	var customer = { id:i, invoices: [] };
 	var j = 0;
 	var invoiceExists = false;
-	while(j < invoiceData.invoices.length) {
+	while(j < 6) {
 	    var checkBox = "cb_" + i + "_" + j;
 	    if(document.getElementById(checkBox).checked == true) {
 		invoiceExists = true;
