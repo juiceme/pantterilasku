@@ -252,7 +252,7 @@ function processSaveInvoiceList(cookie, content) {
 
 function processPdfPreview(cookie, content) {
     var previewData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-h    servicelog("Client #" + cookie.count + " requestes PDF preview " + JSON.stringify(previewData.invoices));
+    servicelog("Client #" + cookie.count + " requestes PDF preview " + JSON.stringify(previewData.invoices));
     setStatustoClient(cookie, "Printing preview");
     printPreview(pushPreviewToClient, cookie, previewData.customer, previewData.invoices);
 }
