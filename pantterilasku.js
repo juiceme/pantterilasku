@@ -252,15 +252,22 @@ function processSaveInvoiceList(cookie, content) {
 
 function processPdfPreview(cookie, content) {
     var previewData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requestes PDF preview " + previewData.customer +
-	       " [" +  JSON.stringify(previewData.invoices) + "]");
+h    servicelog("Client #" + cookie.count + " requestes PDF preview " + JSON.stringify(previewData.invoices));
     setStatustoClient(cookie, "Printing preview");
     printPreview(pushPreviewToClient, cookie, previewData.customer, previewData.invoices);
 }
 
 function processSendInvoices(cookie, content) {
+    cookie.sentMailList = [];
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("*********" + JSON.stringify(invoiceData));
+    servicelog("Client #" + cookie.count + " requestes bulk mailing" + JSON.stringify(invoiceData.invoices));
+    if(userHasSendEmailPrivilige(cookie.user)) {
+	setStatustoClient(cookie, "Sending bulk email");
+	sendBulkEmail(cookie, invoiceData.emailText, invoiceData.invoices);
+    } else {
+	servicelog("user has insufficent priviliges to send email");
+	setStatustoClient(cookie, "Cannot send email!");
+    }
 }
 
 function printPreview(callback, cookie, customer, selectedInvoices)
@@ -308,7 +315,75 @@ function printPreview(callback, cookie, customer, selectedInvoices)
     servicelog("Created PDF preview document");
 }
 
-function pushPreviewToClient(cookie, dummy, filename) {
+function sendBulkEmail(cookie, emailText, allInvoices) {
+    var customerData = datastorage.read("customers");
+    var companyData = datastorage.read("company");
+    var invoiceData = datastorage.read("invoices");
+    var now = new Date();
+    var billNumber = getniceDateTime(now);
+    var customerCount = 0;
+
+    if(allInvoices.length === 0) {
+	servicelog("Invoice empty, not emailing PDF documents");
+	setStatustoClient(cookie, "No mailing available");
+	return null;
+    }
+
+    allInvoices.forEach(function(currentCustomer) {
+	customerCount++;
+	var customer = customerData.customers.map(function(a, b) {
+	    if(currentCustomer.id === b) { return a; }
+	}).filter(function(s){ return s; })[0];
+
+	var invoiceRows = invoiceData.invoices.map(function(a, b) {
+	    if(currentCustomer.invoices.map(function(e) {
+		return e.item;
+	    }).indexOf(b) >= 0) {
+		a.n = currentCustomer.invoices[currentCustomer.invoices.map(function(e) {
+		    return e.item;
+		}).indexOf(b)].count;
+		return a;
+	    }
+	}).filter(function(s){ return s; });
+
+
+
+	var company = companyData.company.map(function(s) {
+	    if(s.id === customer.team) { return s }
+	}).filter(function(s){ return s; })[0];
+
+	var bill = { company: company.name,
+		     bankName: company.bankName,
+		     bic: company.bic,
+		     iban: company.iban,
+		     customer: customer.name,
+		     reference: customer.reference,
+		     date: getNiceDate(now),
+		     number: billNumber,
+		     id: "",
+		     intrest: "",
+		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
+		     notice: "" }
+
+	var customerName = customer.name.replace(" ", "_");
+	customerName = customerName.replace("/", "_");
+	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
+
+	var mailDetails = { text: emailText,
+			    to:  customer.email,
+			    subject: "Uusi lasku " + company.name + " / " + billNumber,
+			    attachment: [ { path: filename,
+					    type: "application/pdf",
+					    name: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
+
+	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
+
+	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending");
+	servicelog("Sent PDF emails");
+    });
+}
+
+function pushPreviewToClient(cookie, dummy1, filename) {
     if(filename == null) {
 	setStatustoClient(cookie, "No preview available");
         servicelog("No PDF preview available");
@@ -420,8 +495,18 @@ function processCreateAccount(cookie, content) {
 	    var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
 								"NEW_ACCOUNT_CONFIRM_ADMIN_GREETING"),
 						account.username);
-	    sendEmail(cookie, emailSubject, emailBody, account.email, "account creation");
-	    sendEmail(cookie, emailAdminSubject, emailAdminBody, mainConfig.main.adminEmailAddess, "account creation");
+
+	    var mailDetailsUser = { text: emailBody,
+				    to: account.email,
+				    subject: emailSubject };
+
+	    var mailDetailsAdmin = { text: emailAdminBody,
+				     to: mainConfig.main.adminEmailAddess,
+				     subject: emailAdminSubject };
+
+	    sendEmail(cookie, mailDetailsUser, false, "account creation");
+	    sendEmail(cookie, mailDetailsAdmin, false, "account creation");
+
 	    return;
 	}
     }
@@ -527,8 +612,17 @@ function updateUserAccount(cookie, account) {
 	var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
 							    "PASSWORD_RESET_CONFIRM_ADMIN_GREETING"),
 					    account.username);
-	sendEmail(cookie, emailSubject, emailBody, account.email, "account update");
-	sendEmail(cookie, emailAdminSubject, emailAdminBody, mainConfig.main.adminEmailAddess, "account update");
+
+	var mailDetailsUser = { text: emailBody,
+				to: account.email,
+				subject: emailSubject };
+
+	var mailDetailsAdmin = { text: emailAdminBody,
+				 to: mainConfig.main.adminEmailAddess,
+				 subject: emailAdminSubject };
+
+	sendEmail(cookie, mailDetailsUser, false, "account update");
+	sendEmail(cookie, mailDetailsAdmin, false, "account update");
 	return true;
     }
 }
@@ -542,6 +636,12 @@ function userHasCustomerEditPrivilige(user) {
 function userHasInvoiceEditPrivilige(user) {
     if(user.priviliges.length === 0) { return false; }
     if(user.priviliges.indexOf("invoice-edit") < 0) { return false; }
+    return true;
+}
+
+function userHasSendEmailPrivilige(user) {
+    if(user.priviliges.length === 0) { return false; }
+    if(user.priviliges.indexOf("email-send") < 0) { return false; }
     return true;
 }
 
@@ -673,34 +773,47 @@ function sendVerificationEmail(cookie, recipientAddress) {
 				       getUserByEmail(recipientAddress)[0].username,
 				       (request.token.mail + request.token.key));
     }
-    sendEmail(cookie, emailSubject, emailBody, recipientAddress, "account verification");
+
+    var mailDetails = { text: emailBody,
+			to: recipientAddress,
+			subject: emailSubject };
+
+    sendEmail(cookie, mailDetails, false, "account verification");
 }
 
 function sendReservationEmail(cookie, reservationTotals) { }
 
-function sendEmail(cookie, emailSubject, emailBody, recipientAddress, logline) {
+function sendEmail(cookie, emailDetails, filename, logline) {
     var emailData = datastorage.read("email");
     if(emailData.blindlyTrust) {
 	servicelog("Trusting self-signed certificates");
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     }
+
+    emailDetails.from = emailData.sender;
+
     email.server.connect({
 	user: emailData.user,
 	password: emailData.password,
 	host: emailData.host,
 	ssl: emailData.ssl
-    }).send({ text: emailBody,
-	      from: emailData.sender,
-	      to: recipientAddress,
-	      subject: emailSubject }, function(err, message) {
-		  if(err) {
-		      servicelog(err + " : " + JSON.stringify(message));
-		      setStatustoClient(cookie, "Failed sending email!");
-		  } else {
-		      servicelog("Sent " + logline + " email to " + recipientAddress);
-		      setStatustoClient(cookie, "Sent email");
-		  }
-	      });
+    }).send(emailDetails, function(err, message) {
+	if(err) {
+	    servicelog(err + " : " + JSON.stringify(message));
+	    setStatustoClient(cookie, "Failed sending email!");
+	    if(filename) {
+		cookie.sentMailList.push({ failed: filename });
+		fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
+	    }
+	} else {
+	    servicelog("Sent " + logline + " email to " + emailDetails.to);
+	    setStatustoClient(cookie, "Sent email");
+	    if(filename) {
+		cookie.sentMailList.push({ passed: filename });
+		fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
+	    }
+	}
+    });
 }
 
 function generateEmailToken(email) {

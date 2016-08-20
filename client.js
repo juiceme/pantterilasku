@@ -650,6 +650,16 @@ function sendAllEmails(invoiceData) {
 	i++;
     });
 
+    if(!havePrivilige(invoiceData.priviliges, "email-send")) {
+	alert("You have no priviliges, you cannot send bulk email.");
+	return false;
+    }
+
+    if(invoices.length === 0) {
+	alert("You have empty invoice, cannot send empty bills.");
+	return false;
+    }
+
     if (confirm('Are you sure you want to bulk email invoices?')) {
 	var clientSendable = { emailText: document.getElementById("myEmailTextArea").value,
 			       invoices: invoices };
