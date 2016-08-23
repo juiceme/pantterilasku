@@ -1,12 +1,14 @@
 # pantterilasku
 
-A node.js invoice/bill creation utility handy for generating and emailing PDF-formatted invoices to multiple recipients.
+A multiuser node.js invoice/bill creation utility handy for generating and emailing PDF-formatted invoices to multiple recipients.
 
 ## Description
 
 Pantterilasku automates creating invoices/bills for multiple recipients. There is a PDF template that is filled automatically by recipient data and itemized list of billable products/services and mailed to the recipients.
 
 Input data for the recipients and items are stored as JSON files. Web-interface enables adding items separately for each recipient.
+
+Pantterilasku supports multiple users, each having only view of the customers they have credentials for.
 
 ## Installation
 
@@ -22,6 +24,7 @@ The repository clones AES library as submodule, You need to install it by "git s
 * Uses AES-CTR encryption between server and client to defeat man-in-the-middle attacks.
 * Preview for generated PDF invoices in the browser
 * Automatic batch mailing of invoices
+* Integrated user management with password recovery
   
 ## Coming soon!
 
