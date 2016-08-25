@@ -230,8 +230,6 @@ function getPreviewPdf(link, invoiceData) {
 	}
     }
 
- //   var selectedInvoices = [{item:1,count:1},{item:2,count:1},{item:3,count:1}];
-
     var clientSendable = { customer: link.number, invoices: selectedInvoices };
     var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
     var sendable = { type: "getPdfPreview",
@@ -251,7 +249,7 @@ function createInvoiceTable(invoiceData) {
     for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
-	cell0.appendChild(document.createTextNode(i));
+	cell0.appendChild(document.createTextNode(i+1));
 	row.appendChild(cell0);
 	var cell1 = document.createElement('td');
 	var invoiceSelector = createInvoiceSelector(invoiceData.invoices);

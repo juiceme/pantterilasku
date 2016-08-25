@@ -263,6 +263,7 @@ function processSendInvoices(cookie, content) {
     servicelog("Client #" + cookie.count + " requestes bulk mailing" + JSON.stringify(invoiceData.invoices));
     if(userHasSendEmailPrivilige(cookie.user)) {
 	setStatustoClient(cookie, "Sending bulk email");
+	saveEmailText(cookie, invoiceData.emailText);
 	sendBulkEmail(cookie, invoiceData.emailText, invoiceData.invoices);
     } else {
 	servicelog("user has insufficent priviliges to send email");
@@ -405,6 +406,17 @@ function pushPreviewToClient(cookie, dummy1, filename) {
 		     content: pdfFile };
     sendCipherTextToClient(cookie, sendable);
     setStatustoClient(cookie, "OK");
+}
+
+function saveEmailText(cookie, emailText) {
+    var invoiceData = datastorage.read("invoices");
+    var newInvoiceData = { defaultEmailText : emailText, invoices : invoiceData.invoices };
+
+    if(datastorage.write("invoices", newInvoiceData) === false) {
+	servicelog("Invoice database write failed");
+    } else {
+	servicelog("Updated Invoice database with new email text: " + JSON.stringify(emailText));
+    }
 }
 
 function updateCustomersFromClient(cookie, customers) {
