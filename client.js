@@ -417,7 +417,7 @@ function createEmailText(invoiceData) {
     textArea.id = "myEmailTextArea"
     textArea.setAttribute('cols',80);
     textArea.setAttribute('rows', 5);
-    textArea.value = invoiceData.defaultEmailText;
+    textArea.value = invoiceData.emailText;
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
@@ -631,18 +631,17 @@ function sendAllEmails(invoiceData) {
     var i = 0;
     invoiceData.customers.forEach(function(s) {
 	var customer = { id:i, invoices: [] };
-	var j = 0;
 	var invoiceExists = false;
-	while(j < 6) {
+	for(var j=0; j<6; j++) {
 	    var checkBox = "cb_" + i + "_" + j;
 	    if(document.getElementById(checkBox).checked == true) {
 		invoiceExists = true;
-		var listId = "ns_" + i + "_" + j;
-		var selection = document.getElementById(listId);
-		var value = selection.options[selection.selectedIndex].value;
-		customer.invoices.push({ item : j, count : value });
+		var nSelection = document.getElementById("ns_" + i + "_" + j);
+		var nValue = parseInt(nSelection.options[nSelection.selectedIndex].value);
+		var iSelection = document.getElementById("is_" + j);
+		var iValue = parseInt(iSelection.options[iSelection.selectedIndex].value);
+		customer.invoices.push({ item : iValue, count : nValue });
 	    }
-	    j++;
 	}
 	if(invoiceExists) { invoices.push(customer); }
 	i++;

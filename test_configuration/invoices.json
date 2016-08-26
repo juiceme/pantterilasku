@@ -1,5 +1,4 @@
 {"file":"invoices","backup":true,"content":{
-  "defaultEmailText" : "Here is a new invoice for you.",
   "invoices" : [
     { "user":"juice", "description" : "Mömmöjä koko rahalla",  "price" : "80.05", "vat"   : "0.0" },
     { "user":"juice", "description" : "Kamaa ja Sälää",  "price" : "11.40", "vat"   : "22.0" },

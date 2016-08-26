@@ -88,6 +88,9 @@ wsServer.on('request', function(request) {
     var connection = request.accept(null, request.origin);
     var cookie = { count:connectionCount++, connection:connection, state:"new" };
     var sendable;
+    var defaultUserRights = { priviliges: [ "none" ],
+			      teams: [],
+			      emailText: datastorage.read("email").defaultEmailText };
     servicelog("Client #" + cookie.count  + " accepted");
 
     connection.on('message', function(message) {
@@ -110,7 +113,7 @@ wsServer.on('request', function(request) {
             if(type === "clientStarted") { processClientStarted(cookie); }
 	    if(type === "userLogin") { processUserLogin(cookie, content); }
 	    if(type === "loginResponse") { processLoginResponse(cookie, content); }
-	    if(type === "createAccount") { processCreateAccount(cookie, content); }
+	    if(type === "createAccount") { processCreateAccount(cookie, defaultUserRights, content); }
 	    if((type === "confirmEmail") &&
 	       stateIs(cookie, "clientStarted")) { processConfirmEmail(cookie, content); }
 	    if((type === "validateAccount") &&
@@ -198,7 +201,7 @@ function processLoginResponse(cookie, content) {
 	    sendCipherTextToClient(cookie, sendable);
 	    servicelog("Sent unpriviligedLogin info to client #" + cookie.count);
 	} else {
-	    cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+	    cookie.invoiceData = createUserInvoiceData(cookie.user);
             sendable = { type: "invoiceData",
 			 content: cookie.invoiceData };
 	    sendCipherTextToClient(cookie, sendable);
@@ -213,7 +216,7 @@ function processLoginResponse(cookie, content) {
 function processResetToMainState(cookie, content) {
     var sendable;
     servicelog("User session reset to main state");
-    cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+    cookie.invoiceData = createUserInvoiceData(cookie.user);
     sendable = { type: "invoiceData",
 		 content: cookie.invoiceData };
     sendCipherTextToClient(cookie, sendable);
@@ -226,7 +229,7 @@ function processSaveCustomerList(cookie, content) {
     servicelog("Client #" + cookie.count + " requests customer list saving: " + JSON.stringify(invoiceData.customers));
     if(userHasCustomerEditPrivilige(cookie.user)) {
 	updateCustomersFromClient(cookie, invoiceData.customers);
-	cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+	cookie.invoiceData = createUserInvoiceData(cookie.user);
     } else {
 	servicelog("user has insufficent priviliges to edit customer tables");
     }
@@ -241,7 +244,7 @@ function processSaveInvoiceList(cookie, content) {
     servicelog("Client #" + cookie.count + " requests invoice list saving: " + JSON.stringify(invoiceData.invoices));
     if(userHasInvoiceEditPrivilige(cookie.user)) {
 	updateInvoicesFromClient(cookie, invoiceData.invoices);
-	cookie.invoiceData = createUserInvoiceData(cookie.user.username);
+	cookie.invoiceData = createUserInvoiceData(cookie.user);
     } else {
 	servicelog("user has insufficent priviliges to edit invoice tables");
     }
@@ -409,13 +412,23 @@ function pushPreviewToClient(cookie, dummy1, filename) {
 }
 
 function saveEmailText(cookie, emailText) {
-    var invoiceData = datastorage.read("invoices");
-    var newInvoiceData = { defaultEmailText : emailText, invoices : invoiceData.invoices };
+    cookie.user.applicationData.emailText = emailText;
+    updateUserdataFromCookie(cookie);
+    servicelog("Updated user data with new email text: [" + JSON.stringify(emailText) + "]");
+}
 
-    if(datastorage.write("invoices", newInvoiceData) === false) {
-	servicelog("Invoice database write failed");
+function updateUserdataFromCookie(cookie) {
+    var userData = readUserData();
+    var newUserData = { users : [] };
+
+    newUserData.users = userData.users.filter(function(u) {
+	return u.username !== cookie.user.username;
+    });
+    newUserData.users.push(cookie.user);
+    if(datastorage.write("users", newUserData) === false) {
+	servicelog("User database write failed");
     } else {
-	servicelog("Updated Invoice database with new email text: " + JSON.stringify(emailText));
+	servicelog("Updated User Account from cookie: " + JSON.stringify(cookie.user));
     }
 }
 
@@ -423,7 +436,7 @@ function updateCustomersFromClient(cookie, customers) {
     var customerData = datastorage.read("customers");
 
     var checkedCustomers = customers.map(function(c) {
-	if(cookie.user.teams.indexOf(c.team) >= 0) { return c; }
+	if(cookie.user.applicationData.teams.indexOf(c.team) >= 0) { return c; }
     }).filter(function(s){ return s; });
 
     var newCustomerData = { customers : [] };
@@ -452,7 +465,7 @@ function updateInvoicesFromClient(cookie, invoices) {
 	if(c.user === cookie.user.username) { return c; }
     }).filter(function(s){ return s; });
 
-    var newInvoiceData = { defaultEmailText : invoiceData.defaultEmailText, invoices : [] };
+    var newInvoiceData = { invoices : [] };
     invoiceData.invoices.forEach(function(c) {
 	if(checkedInvoices.filter(function(f) {
 	    return (f.user === c.user);
@@ -471,7 +484,7 @@ function updateInvoicesFromClient(cookie, invoices) {
     }
 }
 
-function processCreateAccount(cookie, content) {
+function processCreateAccount(cookie, accountDefaults, content) {
     var sendable;
     servicelog("temp passwd: " + JSON.stringify(cookie.aesKey));
     var account = JSON.parse(Aes.Ctr.decrypt(content, cookie.aesKey, 128));
@@ -487,7 +500,7 @@ function processCreateAccount(cookie, content) {
 
     if(stateIs(cookie, "newUserValidated")) {
 	servicelog("Request for new user: [" + account.username + "]");
-	if(!createAccount(account)) {
+	if(!createAccount(account, accountDefaults)) {
 	    servicelog("Cannot create account " + account.username);
 	    // there are more possible reasons than already existing account, however user needs
 	    // not know about that, hence display only "Account already exists!" in client...
@@ -604,8 +617,7 @@ function updateUserAccount(cookie, account) {
 	var newUserAccount = { username: account.username,
 			       hash: sha1.hash(account.username),
 			       password: account.password,
-			       priviliges: oldUserAccount[0].priviliges,
-			       teams: oldUserAccount[0].teams };
+			       applicationData: oldUserAccount[0].applicationData };
 	if(account["realname"] !== undefined) { newUserAccount.realname = account.realname; }
 	if(account["email"] !== undefined) { newUserAccount.email = account.email; }
 	if(account["phone"] !== undefined) { newUserAccount.phone = account.phone; }
@@ -640,27 +652,27 @@ function updateUserAccount(cookie, account) {
 }
 
 function userHasCustomerEditPrivilige(user) {
-    if(user.priviliges.length === 0) { return false; }
-    if(user.priviliges.indexOf("customer-edit") < 0) { return false; }
+    if(user.applicationData.priviliges.length === 0) { return false; }
+    if(user.applicationData.priviliges.indexOf("customer-edit") < 0) { return false; }
     return true;
 }
 
 function userHasInvoiceEditPrivilige(user) {
-    if(user.priviliges.length === 0) { return false; }
-    if(user.priviliges.indexOf("invoice-edit") < 0) { return false; }
+    if(user.applicationData.priviliges.length === 0) { return false; }
+    if(user.applicationData.priviliges.indexOf("invoice-edit") < 0) { return false; }
     return true;
 }
 
 function userHasSendEmailPrivilige(user) {
-    if(user.priviliges.length === 0) { return false; }
-    if(user.priviliges.indexOf("email-send") < 0) { return false; }
+    if(user.applicationData.priviliges.length === 0) { return false; }
+    if(user.applicationData.priviliges.indexOf("email-send") < 0) { return false; }
     return true;
 }
 
 function getUserPriviliges(user) {
-    if(user.priviliges.length === 0) { return []; }
-    if(user.priviliges.indexOf("none") > -1) { return []; }
-    return user.priviliges;
+    if(user.applicationData.priviliges.length === 0) { return []; }
+    if(user.applicationData.priviliges.indexOf("none") > -1) { return []; }
+    return user.applicationData.priviliges;
 }
 
 function getUserByUserName(username) {
@@ -681,7 +693,7 @@ function getUserByHashedName(hash) {
     });
 }
 
-function createAccount(account) {
+function createAccount(account, accountDefaults) {
     if(account["password"] === undefined) {
 	servicelog("Received account creation data without password");
 	return false;
@@ -696,8 +708,7 @@ function createAccount(account) {
 	var newAccount = { username: account.username,
 			   hash: sha1.hash(account.username),
 			   password: account.password,
-			   priviliges: [ "none" ],
-			   teams: [] };
+			   applicationData: accountDefaults };
 	if(account["realname"] !== undefined) { newAccount.realname = account.realname; }
 	if(account["email"] !== undefined) { newAccount.email = account.email; }
 	if(account["phone"] !== undefined) { newAccount.phone = account.phone; }
@@ -842,16 +853,14 @@ function getNewChallenge() {
 // ---------
 
 
-function createUserInvoiceData(username) {
-    var user = getUserByUserName(username)[0];
+function createUserInvoiceData(user) {
     var customerData = datastorage.read("customers");
     var invoiceData = datastorage.read("invoices");
     var companyData = datastorage.read("company");
-    var defaultEmailText = invoiceData.defaultEmailText;
 
     var ownCustomers = [];
     customerData.customers.forEach(function(customer) {
-	if(user.teams.indexOf(customer.team) >= 0) {
+	if(user.applicationData.teams.indexOf(customer.team) >= 0) {
 	    ownCustomers.push(customer);
 	}
     });
@@ -863,7 +872,7 @@ function createUserInvoiceData(username) {
     });
     var ownCompany = [];
     companyData.company.forEach(function(company) {
-	if(user.teams.indexOf(company.id) >= 0) {
+	if(user.applicationData.teams.indexOf(company.id) >= 0) {
 	    ownCompany.push(company);
 	}
     });
@@ -872,10 +881,10 @@ function createUserInvoiceData(username) {
     return { customers : ownCustomers,
 	     invoices : ownInvoices,
 	     company : ownCompany,
-	     defaultEmailText : defaultEmailText,
+	     emailText : user.applicationData.emailText,
 	     user : user.username,
-	     teams : user.teams,
-	     priviliges : user.priviliges };
+	     teams : user.applicationData.teams,
+	     priviliges : user.applicationData.priviliges };
 }
 
 
