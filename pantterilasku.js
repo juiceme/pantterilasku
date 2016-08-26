@@ -723,23 +723,23 @@ function createAccount(account, accountDefaults) {
 }
 
 function validateAccountCode(code) {
-    var userData = datastorage.read("pending");
-    if(Object.keys(userData.pending).length === 0) {
+    var pendingUserData = datastorage.read("pending");
+    if(Object.keys(pendingUserData.pending).length === 0) {
 	servicelog("Empty pending requests database, bailing out");
 	return false;
     } 
-    var target = userData.pending.filter(function(u) {
+    var target = pendingUserData.pending.filter(function(u) {
 	return u.token.mail === code.slice(0, 8);
     });
     if(target.length === 0) {
 	return false;
     } else {
-	var newUserData = { pending : [] };
-	newUserData.pending = userData.pending.filter(function(u) {
+	var newPendingUserData = { pending : [] };
+	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
 	    return u.token.mail !== code.slice(0, 8);
 	});
 
-	if(datastorage.write("pending", newUserData) === false) {
+	if(datastorage.write("pending", newPendingUserData) === false) {
 	    servicelog("Pending requests database write failed");
 	} else {
 	    servicelog("Removed pending request from database");
@@ -749,20 +749,20 @@ function validateAccountCode(code) {
 }
 
 function removePendingRequest(cookie, emailAdress) {
-    var userData = datastorage.read("pending");
-    if(Object.keys(userData.pending).length === 0) {
+    var pendingUserData = datastorage.read("pending");
+    if(Object.keys(pendingUserData.pending).length === 0) {
 	servicelog("Empty pending requests database, bailing out");
 	return;
     }
-    if(userData.pending.filter(function(u) {
+    if(pendingUserData.pending.filter(function(u) {
 	return u.email === emailAdress;
     }).length !== 0) {
 	servicelog("Removing duplicate entry from pending database");
-	var newUserData = { pending : [] };
-	newUserData.pending = userData.pending.filter(function(u) {
+	var newPendingUserData = { pending : [] };
+	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
             return u.email !== emailAdress;
 	});
-	if(datastorage.write("pending", newUserData) === false) {
+	if(datastorage.write("pending", newPendingUserData) === false) {
             servicelog("Pending requests database write failed");
 	}
     } else {
@@ -923,19 +923,19 @@ function fillTagsInText(text) {
 
 setInterval(function() {
     var now = new Date().getTime();
-    var userData = datastorage.read("pending");
-    if(Object.keys(userData.pending).length === 0) {
+    var pendingUserData = datastorage.read("pending");
+    if(Object.keys(pendingUserData.pending).length === 0) {
 	servicelog("No pending requests to purge");
 	return;
     }
     
     var purgeCount = 0
-    var newUserData = { pending : [] };
-    userData.pending.forEach(function(r) {
+    var newPendingUserData = { pending : [] };
+    pendingUserData.pending.forEach(function(r) {
 	if(r.date < now) {
 	    purgeCount++;
 	} else {
-	    newUserData.pending.push(r);
+	    newPendingUserData.pending.push(r);
 	}
     });
 
@@ -943,7 +943,7 @@ setInterval(function() {
 	servicelog("No pending requests timeouted");
 	return;
     } else {
-	if(datastorage.write("pending", newUserData) === false) {
+	if(datastorage.write("pending", newPendingUserData) === false) {
 	    servicelog("Pending requests database write failed");
 	} else {
 	    servicelog("Removed " + purgeCount + " timeouted pending requests");
