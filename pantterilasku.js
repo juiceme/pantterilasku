@@ -348,7 +348,7 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 	}).filter(function(s){ return s; });
 
 	var company = cookie.invoiceData.company.map(function(s) {
-	    if(s.id === cookie.invoiceData.customers[customer].team) { return s }
+	    if(s.id === cookie.invoiceData.customers[customerCount].team) { return s }
 	}).filter(function(s){ return s; })[0];
 
 	var bill = { company: company.name,
