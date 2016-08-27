@@ -263,7 +263,7 @@ function processPdfPreview(cookie, content) {
 function processSendInvoices(cookie, content) {
     cookie.sentMailList = [];
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requestes bulk mailing" + JSON.stringify(invoiceData.invoices));
+    servicelog("Client #" + cookie.count + " requestes bulk mailing " + JSON.stringify(invoiceData.invoices));
     if(userHasSendEmailPrivilige(cookie.user)) {
 	setStatustoClient(cookie, "Sending bulk email");
 	saveEmailText(cookie, invoiceData.emailText);
@@ -320,9 +320,6 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 }
 
 function sendBulkEmail(cookie, emailText, allInvoices) {
-    var customerData = datastorage.read("customers");
-    var companyData = datastorage.read("company");
-    var invoiceData = datastorage.read("invoices");
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var customerCount = 0;
@@ -335,11 +332,11 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 
     allInvoices.forEach(function(currentCustomer) {
 	customerCount++;
-	var customer = customerData.customers.map(function(a, b) {
+	var customer = cookie.invoiceData.customers.map(function(a, b) {
 	    if(currentCustomer.id === b) { return a; }
 	}).filter(function(s){ return s; })[0];
 
-	var invoiceRows = invoiceData.invoices.map(function(a, b) {
+	var invoiceRows = cookie.invoiceData.invoices.map(function(a, b) {
 	    if(currentCustomer.invoices.map(function(e) {
 		return e.item;
 	    }).indexOf(b) >= 0) {
@@ -350,10 +347,8 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 	    }
 	}).filter(function(s){ return s; });
 
-
-
-	var company = companyData.company.map(function(s) {
-	    if(s.id === customer.team) { return s }
+	var company = cookie.invoiceData.company.map(function(s) {
+	    if(s.id === cookie.invoiceData.customers[customer].team) { return s }
 	}).filter(function(s){ return s; })[0];
 
 	var bill = { company: company.name,
@@ -803,8 +798,6 @@ function sendVerificationEmail(cookie, recipientAddress) {
 
     sendEmail(cookie, mailDetails, false, "account verification");
 }
-
-function sendReservationEmail(cookie, reservationTotals) { }
 
 function sendEmail(cookie, emailDetails, filename, logline) {
     var emailData = datastorage.read("email");
