@@ -664,6 +664,7 @@ function sendAllEmails(invoiceData) {
 	var sendable = { type: "sendInvoices",
 			 content : encryptedSendable };
 	mySocket.send(JSON.stringify(sendable));
+	document.documentElement.scrollTop = 0;
     } else {
 	// Do nothing!
     }
