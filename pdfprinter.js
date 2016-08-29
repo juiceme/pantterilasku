@@ -134,7 +134,7 @@ function printFooter(doc, bill, total) {
 	doc.text("TILISIIRTO", 26, 715);
 }
 
-function printSheet(callback, connectionIndex, details, filename, billData, itemList, logline) {
+function printSheet(callback, connectionIndex, details, filename, billData, itemList, logline, count, billNumber) {
     // Create the document
     var doc = new PDFDocument({	size: "a4",
 				layout: "portrait",
@@ -169,7 +169,7 @@ function printSheet(callback, connectionIndex, details, filename, billData, item
 
     // wait for the document to finish before returning...
     writeStream.on('finish', function () {
-	callback(connectionIndex, details, filename, logline);
+	callback(connectionIndex, details, filename, logline, count, billNumber);
     });
 }
 

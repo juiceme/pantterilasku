@@ -52,7 +52,12 @@ mySocket.onmessage = function (event) {
 
     if(receivable.type == "pdfUpload") {
 	var pdfData = atob(JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128)));
-	window.open("data:application/pdf," + escape(pdfData)); 
+	window.open("data:application/pdf," + escape(pdfData));
+    }
+
+    if(receivable.type == "zipUpload") {
+	var zipData = atob(JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128)));
+	window.open("data:application/zip," + escape(zipData));
     }
 }
 

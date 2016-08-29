@@ -25,7 +25,8 @@
   "dependencies": {
     "websocket": "=1.0.22",
     "pdfkit": "=0.7.2",
-    "emailjs": "=1.0.2"
+    "emailjs": "=1.0.2",
+    "archiver": "=1.0.1"
   },
   "scripts": {
   },

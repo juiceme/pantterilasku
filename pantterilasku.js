@@ -8,6 +8,7 @@ var Aes = require('./crypto/aes.js');
 Aes.Ctr = require('./crypto/aes-ctr.js');
 var sha1 = require('./crypto/sha1.js');
 var datastorage = require('./datastorage/datastorage.js');
+var archiver = require("archiver");
 
 var globalSalt = sha1.hash(JSON.stringify(new Date().getTime()));
 
@@ -315,7 +316,7 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
 		 notice: "" }
 
-    pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice);
+    pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     servicelog("Created PDF preview document");
 }
 
@@ -364,8 +365,7 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
 		     notice: "" }
 
-	var customerName = customer.name.replace(" ", "_");
-	customerName = customerName.replace("/", "_");
+	var customerName = customer.name.replace(/\W+/g , "_");
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
 	var mailDetails = { text: emailText,
@@ -377,12 +377,12 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 
 	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
 
-	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending");
+	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending", allInvoices.length, billNumber);
 	servicelog("Sent PDF emails");
     });
 }
 
-function pushPreviewToClient(cookie, dummy1, filename) {
+function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     if(filename == null) {
 	setStatustoClient(cookie, "No preview available");
         servicelog("No PDF preview available");
@@ -404,6 +404,7 @@ function pushPreviewToClient(cookie, dummy1, filename) {
 		     content: pdfFile };
     sendCipherTextToClient(cookie, sendable);
     setStatustoClient(cookie, "OK");
+    servicelog("pushed preview PDF to client");
 }
 
 function saveEmailText(cookie, emailText) {
@@ -524,8 +525,8 @@ function processCreateAccount(cookie, accountDefaults, content) {
 				     to: mainConfig.main.adminEmailAddess,
 				     subject: emailAdminSubject };
 
-	    sendEmail(cookie, mailDetailsUser, false, "account creation");
-	    sendEmail(cookie, mailDetailsAdmin, false, "account creation");
+	    sendEmail(cookie, mailDetailsUser, false, "account creation", false, false);
+	    sendEmail(cookie, mailDetailsAdmin, false, "account creation", false, false);
 
 	    return;
 	}
@@ -640,8 +641,8 @@ function updateUserAccount(cookie, account) {
 				 to: mainConfig.main.adminEmailAddess,
 				 subject: emailAdminSubject };
 
-	sendEmail(cookie, mailDetailsUser, false, "account update");
-	sendEmail(cookie, mailDetailsAdmin, false, "account update");
+	sendEmail(cookie, mailDetailsUser, false, "account update", false, false);
+	sendEmail(cookie, mailDetailsAdmin, false, "account update", false, false);
 	return true;
     }
 }
@@ -796,10 +797,10 @@ function sendVerificationEmail(cookie, recipientAddress) {
 			to: recipientAddress,
 			subject: emailSubject };
 
-    sendEmail(cookie, mailDetails, false, "account verification");
+    sendEmail(cookie, mailDetails, false, "account verification", false, false);
 }
 
-function sendEmail(cookie, emailDetails, filename, logline) {
+function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, billNumber) {
     var emailData = datastorage.read("email");
     if(emailData.blindlyTrust) {
 	servicelog("Trusting self-signed certificates");
@@ -818,17 +819,62 @@ function sendEmail(cookie, emailDetails, filename, logline) {
 	    servicelog(err + " : " + JSON.stringify(message));
 	    setStatustoClient(cookie, "Failed sending email!");
 	    if(filename) {
-		cookie.sentMailList.push({ failed: filename });
-		fs.renameSync(filename,  "./failed_invoices/" + path.basename(filename));
+		var newFilename =  "./failed_invoices/" + path.basename(filename);
+		fs.renameSync(filename, newFilename);
+		cookie.sentMailList.push(newFilename);
+		if(cookie.sentMailList.length === totalEmailCount) {
+		    pushSentEmailZipToClient(cookie, billNumber);
+		}
 	    }
 	} else {
 	    servicelog("Sent " + logline + " email to " + emailDetails.to);
 	    setStatustoClient(cookie, "Sent email");
 	    if(filename) {
-		cookie.sentMailList.push({ passed: filename });
-		fs.renameSync(filename,  "./sent_invoices/" + path.basename(filename));
+		var newFilename =  "./sent_invoices/" + path.basename(filename);
+		fs.renameSync(filename, newFilename);
+		cookie.sentMailList.push(newFilename);
+		if(cookie.sentMailList.length === totalEmailCount) {
+		    pushSentEmailZipToClient(cookie, billNumber);
+		}
 	    }
 	}
+    });
+}
+
+function pushSentEmailZipToClient(cookie, billNumber) {
+    var zipFileName = "./temp/invoices_" + billNumber + ".zip"
+    var archiveStream = fs.createWriteStream(zipFileName);
+    var archive = archiver("zip");
+    archive.pipe(archiveStream);
+    for(i=0; i<cookie.sentMailList.length; i++) {
+	var fileName = cookie.sentMailList[i].replace("./", "");
+	archive.append(fs.createReadStream(fileName), { name: fileName });
+    }
+    archive.finalize();
+
+    archive.on('error', function(err) {
+	servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
+	return;
+    });
+
+    archiveStream.on('close', function() {
+	if(!stateIs(cookie, "loggedIn")) {
+	    setStatustoClient(cookie, "Login failure");
+	    servicelog("Login failure in zipfile sending");
+	    return;
+	}
+	try {
+	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
+	} catch(err) {
+	    servicelog("Failed to load zipfile: " + err);
+	    setStatustoClient(cookie, "zipfile load failure!");
+	    return;
+	}
+	var sendable = { type: "zipUpload",
+			 content: zipFile };
+	sendCipherTextToClient(cookie, sendable);
+	servicelog("pushed email zipfile to client");
+	setStatustoClient(cookie, "OK");
     });
 }
 
