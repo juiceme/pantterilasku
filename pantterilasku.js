@@ -369,6 +369,7 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
 	var mailDetails = { text: emailText,
+			    from: cookie.user.realname + " <" + cookie.user.email + ">",
 			    to:  customer.email,
 			    subject: "Uusi lasku " + company.name + " / " + billNumber,
 			    attachment: [ { path: filename,
@@ -518,10 +519,12 @@ function processCreateAccount(cookie, accountDefaults, content) {
 						account.username);
 
 	    var mailDetailsUser = { text: emailBody,
+				    from: datastorage.read("email").sender,
 				    to: account.email,
 				    subject: emailSubject };
 
 	    var mailDetailsAdmin = { text: emailAdminBody,
+				     from: datastorage.read("email").sender,
 				     to: mainConfig.main.adminEmailAddess,
 				     subject: emailAdminSubject };
 
@@ -634,10 +637,12 @@ function updateUserAccount(cookie, account) {
 					    account.username);
 
 	var mailDetailsUser = { text: emailBody,
+				from: datastorage.read("email").sender,
 				to: account.email,
 				subject: emailSubject };
 
 	var mailDetailsAdmin = { text: emailAdminBody,
+				 from: datastorage.read("email").sender,
 				 to: mainConfig.main.adminEmailAddess,
 				 subject: emailAdminSubject };
 
@@ -794,6 +799,7 @@ function sendVerificationEmail(cookie, recipientAddress) {
     }
 
     var mailDetails = { text: emailBody,
+			from: emailData.sender,
 			to: recipientAddress,
 			subject: emailSubject };
 
@@ -806,8 +812,6 @@ function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, bil
 	servicelog("Trusting self-signed certificates");
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     }
-
-    emailDetails.from = emailData.sender;
 
     email.server.connect({
 	user: emailData.user,
