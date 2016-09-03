@@ -57,7 +57,48 @@ function getClientVariables(language) {
 	printLanguageVariable("HELPTEXT_USER_A", language) + "\n" +
 	printLanguageVariable("HELPTEXT_USER_B", language) + "\n" +
 	printLanguageVariable("HELPTEXT_USER_C", language) + "\n" +
-	printLanguageVariable("HELPTEXT_USER_D", language) + "\n\n";
+	printLanguageVariable("HELPTEXT_USER_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_LOGIN_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_LOGIN_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_LOGIN_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_LOGIN_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_LOGIN_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EMAIL_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EMAIL_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EMAIL_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EMAIL_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EMAIL_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_F", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_G", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_H", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_I", language) + "\n" +
+	printLanguageVariable("UI_TEXT_CONFIG_J", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_F", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_G", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_H", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_F", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_ALERT_A", language) + "\n" +
+	printLanguageVariable("UI_TEXT_ALERT_B", language) + "\n" +
+	printLanguageVariable("UI_TEXT_ALERT_C", language) + "\n\n";
 }
 
 var webServer = http.createServer(function(request,response){
@@ -585,13 +626,11 @@ function processValidateAccount(cookie, content) {
 	    setStatustoClient(cookie, "Validation code correct!");
 	    cookie.aesKey = account.token.key;
 	    var newAccount = {email: account.email};
-	    newAccount.buttonText = "Create Account!";
 	    var user = getUserByEmail(account.email);
 	    if(user.length !== 0) {
 		newAccount.username = user[0].username;
 		newAccount.realname = user[0].realname;
 		newAccount.phone = user[0].phone;
-		newAccount.buttonText = "Save Account!"
 		setState(cookie, "oldUserValidated");
 	    }
 	    sendable = { type: "createNewAccount",

@@ -113,8 +113,8 @@ function createCustomerTable(invoiceData) {
     hCell0.colSpan = "2";
     hCell0.rowSpan = "2";
     hCell1.colSpan = 6;
-    hCell0.innerHTML = "<b>Customer</b>";
-    hCell1.innerHTML = "<b>Invoices</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_E) + "</b>";
+    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
     for(var i=0; i<6; i++) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
@@ -152,7 +152,7 @@ function createCustomerTable(invoiceData) {
 	}
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
-	var previewText = document.createTextNode("preview PDF");
+	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_H));
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
 	previewLink.number = clientCount;
@@ -250,7 +250,7 @@ function createInvoiceTable(invoiceData) {
     var hRow = tableHeader.insertRow(0);    
     var hCell0 = hRow.insertCell(0);
     var hCell1 = hRow.insertCell(1);
-    hCell0.innerHTML = "<b>Invoices</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
     for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -290,13 +290,13 @@ function createEditInvoicesView(invoiceData) {
     var tableBody = document.createElement('tbody');
     var hRow = tableHeader.insertRow(0);    
     var hCell1 = hRow.insertCell(0);
-    hCell1.innerHTML = "<b>Invoices</b>";
+    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_INVOICE_A) + "</b>";
     var hCell2 = hRow.insertCell(1);
-    hCell2.innerHTML = "<b>Item description</b>";
+    hCell2.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_INVOICE_B) + "</b>";
     var hCell3 = hRow.insertCell(2);
-    hCell3.innerHTML = "<b>Price /each</b>";
+    hCell3.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_INVOICE_C) + "</b>";
     var hCell4 = hRow.insertCell(3);
-    hCell4.innerHTML = "<b>Vat-%</b>";
+    hCell4.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_INVOICE_D) + "</b>";
     var count = 1;
     invoiceData.invoices.forEach(function(c) {
 	tableBody.appendChild(createInvoiceEditTableRow(count, invoiceData, c, false));
@@ -319,7 +319,7 @@ function createEditInvoicesView(invoiceData) {
     fieldset.id= "myDiv1";
     if(!havePrivilige(invoiceData.priviliges, "invoice-edit")) {
 	acceptButton.disabled = true;
-	alert("You only have VIEW priviliges, you cannot save your changes.");
+	alert(uiText(UI_TEXT_ALERT_A));
     }
     return fieldset;
 }
@@ -426,7 +426,7 @@ function createEmailText(invoiceData) {
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>Email text:</b>";
+    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
     var row = document.createElement('tr');
     var cell1 = document.createElement('td');
     cell1.appendChild(textArea);
@@ -449,23 +449,23 @@ function createEditCustomersView(invoiceData) {
     var hCell1 = hRow.insertCell(0);
     hCell1.innerHTML = "<b>No.</b>";
     var hCell2 = hRow.insertCell(1);
-    hCell2.innerHTML = "<b>Name</b>";
+    hCell2.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_A) + "</b>";
     var hCell3 = hRow.insertCell(2);
-    hCell3.innerHTML = "<b>Address</b>";
+    hCell3.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_B) + "</b>";
     var hCell4 = hRow.insertCell(3);
-    hCell4.innerHTML = "<b>Detail</b>";
+    hCell4.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_C) + "</b>";
     var hCell5 = hRow.insertCell(4);
-    hCell5.innerHTML = "<b>Email</b>";
+    hCell5.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_D) + "</b>";
     var hCell6 = hRow.insertCell(5);
-    hCell6.innerHTML = "<b>Bank Reference</b>";
+    hCell6.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_E) + "</b>";
     var hCell7 = hRow.insertCell(6);
-    hCell7.innerHTML = "<b>Team</b>";
+    hCell7.innerHTML = "<b>" + uiText(UI_TEXT_EDIT_CUSTOMER_F) + "</b>";
     var count = 1;
     invoiceData.customers.forEach(function(c) {
 	tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, c, false));
 	count++;
     });
-    var newCustomer = { name : "<name>", email : "<name@host>", reference : "<00000>", team : invoiceData.teams[0] };
+    var newCustomer = { name : "<name>", address : "<address>", detail : "<detail>", email : "<name@host>", reference : "<00000>", team : invoiceData.teams[0] };
     tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, newCustomer, true));
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
@@ -483,7 +483,7 @@ function createEditCustomersView(invoiceData) {
     fieldset.id= "myDiv1";
     if(!havePrivilige(invoiceData.priviliges, "customer-edit")) {
 	acceptButton.disabled = true;
-	alert("You only have VIEW priviliges, you cannot save your changes.");
+	alert(uiText(UI_TEXT_ALERT_A));
     }
     return fieldset;
 }
@@ -611,9 +611,9 @@ function createInvoiceButtons(invoiceData) {
     var fieldset = document.createElement('fieldsetset');
     var editCustomersButton = document.createElement('button');
     var editInvoicessButton = document.createElement('button');
-    editCustomersButton.appendChild(document.createTextNode("Edit Customers"));
+    editCustomersButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_B)));
     editCustomersButton.onclick = function() { editCustomers(invoiceData); }
-    editInvoicessButton.appendChild(document.createTextNode("Edit Invoicess"));
+    editInvoicessButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_C)));
     editInvoicessButton.onclick = function() { editInvoicess(invoiceData); }
     fieldset.appendChild(editCustomersButton);
     fieldset.appendChild(editInvoicessButton);
@@ -622,7 +622,7 @@ function createInvoiceButtons(invoiceData) {
 
 function createSendButton(invoiceData) {
     var sendEmailButton = document.createElement('button');
-    sendEmailButton.appendChild(document.createTextNode("Send All Emails!"));
+    sendEmailButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_D)));
     sendEmailButton.onclick = function() { sendAllEmails(invoiceData); }
     return sendEmailButton;
 }
@@ -679,12 +679,12 @@ function sendAllEmails(invoiceData) {
     });
 
     if(!havePrivilige(invoiceData.priviliges, "email-send")) {
-	alert("You have no priviliges, you cannot send bulk email.");
+	alert(uiText(UI_TEXT_ALERT_B));
 	return false;
     }
 
     if(invoices.length === 0) {
-	alert("You have empty invoice, cannot send empty bills.");
+	alert(uiText(UI_TEXT_ALERT_C));
 	return false;
     }
 
@@ -710,6 +710,9 @@ function havePrivilige(priviligeList, privilige) {
 
 // ----------------
 
+function uiText(text) {
+    return decodeURIComponent(escape(text));
+}
 
 function createLoginView() {
     var table = document.createElement('table');
@@ -744,7 +747,7 @@ function createLoginView() {
     passwordField.type="password";
 
     hCell.colSpan = "2";
-    hCell.appendChild(document.createTextNode("Please login or create a new account;"));
+    hCell.appendChild(document.createTextNode(uiText(UI_TEXT_LOGIN_A)));
     hRow.appendChild(hCell);
     setElementStyle(hCell);
     tHeader.appendChild(hRow);
@@ -762,15 +765,15 @@ function createLoginView() {
     setElementStyle(bCell5b);
 
     bCell1a.appendChild(document.createTextNode(" "));
-    bCell2a.appendChild(document.createTextNode("username: "));
+    bCell2a.appendChild(document.createTextNode(uiText(UI_TEXT_LOGIN_B) + ": "));
     bCell2b.appendChild(usernameField);
-    bCell3a.appendChild(document.createTextNode("password: "));
+    bCell3a.appendChild(document.createTextNode(uiText(UI_TEXT_LOGIN_C) + ": "));
     bCell3b.appendChild(passwordField);
     bCell4a.appendChild(document.createTextNode(" "));
 
-    loginButton.appendChild(document.createTextNode("Login"));
+    loginButton.appendChild(document.createTextNode(uiText(UI_TEXT_LOGIN_D)));
     loginButton.onclick = function() { sendLogin(usernameField.value, passwordField.value); }
-    createAccountButton.appendChild(document.createTextNode("Create Account / Reset Password"));
+    createAccountButton.appendChild(document.createTextNode(uiText(UI_TEXT_LOGIN_E)));
     createAccountButton.onclick = function() { createAccountQuery(); }
 
     bCell5a.appendChild(loginButton);
@@ -870,7 +873,7 @@ function createEmailView() {
     validateField.name="validate";
 
     hCell.colSpan = "2";
-    hCell.appendChild(document.createTextNode("Creating or restoring account;"));
+    hCell.appendChild(document.createTextNode(uiText(UI_TEXT_EMAIL_A)));
     hRow.appendChild(hCell);
     setElementStyle(hCell);
     tHeader.appendChild(hRow);
@@ -889,16 +892,16 @@ function createEmailView() {
     setElementStyle(bCell6a);
     bRow6.style.border = "solid #ffffff";
 
-    bCell2a.appendChild(document.createTextNode("email: "));
+    bCell2a.appendChild(document.createTextNode(uiText(UI_TEXT_EMAIL_B) + ": "));
     bCell2b.appendChild(emailField);
 
-    confirmButton.appendChild(document.createTextNode("Send Email!"));
+    confirmButton.appendChild(document.createTextNode(uiText(UI_TEXT_EMAIL_D)));
     confirmButton.onclick = function() { sendConfirmationEmail(emailField.value); }
     bCell3a.appendChild(confirmButton);
 
-    bCell5a.appendChild(document.createTextNode("validation code: "));
+    bCell5a.appendChild(document.createTextNode(uiText(UI_TEXT_EMAIL_C) + ": "));
     bCell5b.appendChild(validateField);
-    validateButton.appendChild(document.createTextNode("Validate Account!"));
+    validateButton.appendChild(document.createTextNode(uiText(UI_TEXT_EMAIL_E)));
     validateButton.onclick = function() { sendValidationCode(validateField.value); }
     bCell6a.appendChild(validateButton);
 
@@ -971,6 +974,7 @@ function createNewAccountView(account) {
     var password1Field = document.createElement("input");
     var password2Field = document.createElement("input");
     var confirmButton = document.createElement("button");
+    var confirmButtonText;
 
     usernameField.name="username";
     realnameField.name="realname";
@@ -981,16 +985,20 @@ function createNewAccountView(account) {
     password2Field.name="password2";
     password2Field.type="password";
 
+    hCell.colSpan = "2";
     if(account.username) {
 	usernameField.value = account.username;
 	usernameField.disabled = true;
-    }
+	hCell.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_A)));
+	confirmButtonText = document.createTextNode(uiText(UI_TEXT_CONFIG_I));
+    } else {
+	hCell.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_B)));
+ 	confirmButtonText = document.createTextNode(uiText(UI_TEXT_CONFIG_J));
+   }
     if(account.realname) { realnameField.value = account.realname;}
     if(account.email) { emailField.value = account.email; }
     if(account.phone) { phoneField.value = account.phone; }
 
-    hCell.colSpan = "2";
-    hCell.appendChild(document.createTextNode("Creating a new account;"));
     hRow.appendChild(hCell);
     setElementStyle(hCell);
     tHeader.appendChild(hRow);
@@ -1025,21 +1033,21 @@ function createNewAccountView(account) {
     setElementStyle(bCell11b);
 
     bCell1a.appendChild(document.createTextNode(" "));
-    bCell2a.appendChild(document.createTextNode("username: "));
+    bCell2a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_C) + ": "));
     bCell2b.appendChild(usernameField);
-    bCell3a.appendChild(document.createTextNode("realname: "));
+    bCell3a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_D) + ": "));
     bCell3b.appendChild(realnameField);
-    bCell4a.appendChild(document.createTextNode("email: "));
+    bCell4a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_E) + ": "));
     bCell4b.appendChild(emailField);
-    bCell5a.appendChild(document.createTextNode("phone: "));
+    bCell5a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_F) + ": "));
     bCell5b.appendChild(phoneField);
-    bCell6a.appendChild(document.createTextNode("password: "));
+    bCell6a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_G) + ": "));
     bCell6b.appendChild(password1Field);
-    bCell7a.appendChild(document.createTextNode("verify passwd: "));
+    bCell7a.appendChild(document.createTextNode(uiText(UI_TEXT_CONFIG_H) + ": "));
     bCell7b.appendChild(password2Field);
     bCell8a.appendChild(document.createTextNode(" "));
 
-    confirmButton.appendChild(document.createTextNode(account.buttonText));
+    confirmButton.appendChild(confirmButtonText);
     confirmButton.onclick = function() { sendConfirmAccount( { username: usernameField.value,
 							       realname:realnameField.value,
 							       email: emailField.value,
@@ -1086,7 +1094,7 @@ function createNewAccountView(account) {
 function createLogoutButton() {
     var button = document.createElement("button");  
     button.onclick = function() { logout(); }
-    var text = document.createTextNode("Logout");
+    var text = document.createTextNode(uiText(UI_TEXT_MAIN_A));
     button.appendChild(text);
     button.id = "myLogoutButton";
     return button;
