@@ -58,8 +58,10 @@ function printHeader(doc, bill) {
 	.text(bill.customerName, 64, 120);
     doc.fontSize(11).font('Times-Roman')
 	.text(bill.customerAddress, 64, 132);
-    doc.fontSize(11).font('Times-Italic')
-	.text("(" + bill.customerDetail + ")", 64, 146);
+    if(bill.customerDetail) {
+	doc.fontSize(11).font('Times-Italic')
+	    .text("(" + bill.customerDetail + ")", 64, 146);
+    }
     doc.fontSize(8).font('Times-Roman')
 	.text(bill.date, 372, 71)
 	.text(bill.number, 372, 120)
