@@ -322,7 +322,7 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 		 id: "",
 		 intrest: "",
 		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		 notice: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))) }
+		 notice: "14 vrk." }
 
     pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     servicelog("Created PDF preview document");
@@ -374,7 +374,7 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 		     id: "",
 		     intrest: "",
 		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		     notice: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))) }
+		     notice: "14 vrk." }
 
 	var customerName = customer.name.replace(/\W+/g , "_");
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
