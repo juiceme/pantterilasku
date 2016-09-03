@@ -451,11 +451,15 @@ function createEditCustomersView(invoiceData) {
     var hCell2 = hRow.insertCell(1);
     hCell2.innerHTML = "<b>Name</b>";
     var hCell3 = hRow.insertCell(2);
-    hCell3.innerHTML = "<b>Email</b>";
+    hCell3.innerHTML = "<b>Address</b>";
     var hCell4 = hRow.insertCell(3);
-    hCell4.innerHTML = "<b>Bank Reference</b>";
+    hCell4.innerHTML = "<b>Detail</b>";
     var hCell5 = hRow.insertCell(4);
-    hCell5.innerHTML = "<b>Team</b>";
+    hCell5.innerHTML = "<b>Email</b>";
+    var hCell6 = hRow.insertCell(5);
+    hCell6.innerHTML = "<b>Bank Reference</b>";
+    var hCell7 = hRow.insertCell(6);
+    hCell7.innerHTML = "<b>Team</b>";
     var count = 1;
     invoiceData.customers.forEach(function(c) {
 	tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, c, false));
@@ -502,43 +506,61 @@ function createCustomerEditTableRow(count, invoiceData, customer, lastRow) {
 
     var cell2 = document.createElement('td');
     var txtA2 = document.createElement("textarea");
-    txtA2.id = "ta_" + count + "_email";
+    txtA2.id = "ta_" + count + "_address";
     txtA2.setAttribute('cols', 30);
     txtA2.setAttribute('rows', 1);
-    txtA2.value = customer.email;
+    txtA2.value = customer.address;
     cell2.appendChild(txtA2);
     row.appendChild(cell2);
 
     var cell3 = document.createElement('td');
     var txtA3 = document.createElement("textarea");
-    txtA3.id = "ta_" + count + "_reference";
-    txtA3.setAttribute('cols', 25);
+    txtA3.id = "ta_" + count + "_detail";
+    txtA3.setAttribute('cols', 30);
     txtA3.setAttribute('rows', 1);
-    txtA3.value = customer.reference;
+    txtA3.value = customer.detail;
     cell3.appendChild(txtA3);
     row.appendChild(cell3);
 
     var cell4 = document.createElement('td');
-    var teamSelector = createTeamSelector(invoiceData.teams, customer.team, count);
-    teamSelector.id = "ta_" + count + "_teamSelector";
-    cell4.appendChild(teamSelector);
+    var txtA4 = document.createElement("textarea");
+    txtA4.id = "ta_" + count + "_email";
+    txtA4.setAttribute('cols', 30);
+    txtA4.setAttribute('rows', 1);
+    txtA4.value = customer.email;
+    cell4.appendChild(txtA4);
     row.appendChild(cell4);
 
     var cell5 = document.createElement('td');
+    var txtA5 = document.createElement("textarea");
+    txtA5.id = "ta_" + count + "_reference";
+    txtA5.setAttribute('cols', 25);
+    txtA5.setAttribute('rows', 1);
+    txtA5.value = customer.reference;
+    cell5.appendChild(txtA5);
+    row.appendChild(cell5);
+
+    var cell6 = document.createElement('td');
+    var teamSelector = createTeamSelector(invoiceData.teams, customer.team, count);
+    teamSelector.id = "ta_" + count + "_teamSelector";
+    cell6.appendChild(teamSelector);
+    row.appendChild(cell6);
+
+    var cell7 = document.createElement('td');
     if(lastRow) {
 	var addButton = document.createElement("button");
 	addButton.appendChild(document.createTextNode("Create"));
 	addButton.id = count;
 	addButton.onclick = function() { createCustomerToList(invoiceData, this); }
-	cell5.appendChild(addButton);
+	cell7.appendChild(addButton);
     } else {
 	var deleteButton = document.createElement("button");
 	deleteButton.appendChild(document.createTextNode("Delete"));
 	deleteButton.id = count;
 	deleteButton.onclick = function() { deleteCustomerFromList(invoiceData, this); }
-	cell5.appendChild(deleteButton);
+	cell7.appendChild(deleteButton);
     }
-    row.appendChild(cell5);
+    row.appendChild(cell7);
 
     return row;
 }
@@ -574,6 +596,8 @@ function deleteCustomerFromList(invoiceData, button) {
 
 function createCustomerToList(invoiceData, button) {
     var newCustomer = { name : document.getElementById("ta_" + button.id + "_name").value,
+			address : document.getElementById("ta_" + button.id + "_address").value,
+			detail : document.getElementById("ta_" + button.id + "_detail").value,
 			email : document.getElementById("ta_" + button.id + "_email").value,
 			reference : document.getElementById("ta_" + button.id + "_reference").value,
 			team : getSelectedTeam("ta_" + button.id + "_teamSelector") };
@@ -619,6 +643,8 @@ function saveCustomerDataEdit(invoiceData) {
     var count = 1;
     invoiceData.customers.forEach(function(c) {
 	c.name = document.getElementById("ta_" + count + "_name").value;
+	c.address = document.getElementById("ta_" + count + "_address").value;
+	c.detail = document.getElementById("ta_" + count + "_detail").value;
 	c.email = document.getElementById("ta_" + count + "_email").value;
 	c.reference =  document.getElementById("ta_" + count + "_reference").value;
 	c.team = getSelectedTeam("ta_" + count + "_teamSelector");

@@ -2,14 +2,15 @@
     {
 	"id"         : "black",
 	"name"       : "Panthers Black",
+	"address"    : "Main Street 1 / Helsinki",
 	"bankName"   : "Bank xxx",
 	"iban"       : "FI00 1234 5678 9012 34",
 	"bic"        : "xxxxFIHH" },
     {
 	"id"         : "grey",
 	"name"       : "Panthers Harmaat",
+	"address"    : "Main Street 1 / Helsinki",
 	"bankName"   : "Bank xxx",
 	"iban"       : "FI00 1234 5678 9012 34",
 	"bic"        : "xxxxFIHH" }
 ]}}
-
