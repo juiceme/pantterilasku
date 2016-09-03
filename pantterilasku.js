@@ -298,23 +298,31 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 	setStatustoClient(cookie, "No preview available");
 	return null;
     }
-  
+
+    servicelog("********** : " + JSON.stringify(cookie.invoiceData));
+    servicelog("********** : " + JSON.stringify(customer));
+
     var company = cookie.invoiceData.company.map(function(s) {
 	if(s.id === cookie.invoiceData.customers[customer].team) { return s }
     }).filter(function(s){ return s; })[0];
 
-    var bill = { company: company.name,
+    servicelog("********** : " + JSON.stringify(company));
+
+    var bill = { companyName: company.name,
+		 companyAddress: company.address,
 		 bankName: company.bankName,
 		 bic: company.bic,
 		 iban: company.iban,
-		 customer: cookie.invoiceData.customers[customer].name,
+		 customerName: cookie.invoiceData.customers[customer].name,
+		 customerAddress: cookie.invoiceData.customers[customer].address,
+		 customerDetail: cookie.invoiceData.customers[customer].detail,
 		 reference: cookie.invoiceData.customers[customer].reference,
 		 date: getNiceDate(now),
 		 number: "",
 		 id: "",
 		 intrest: "",
 		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		 notice: "" }
+		 notice: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))) }
 
     pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     servicelog("Created PDF preview document");
@@ -352,18 +360,21 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 	    if(s.id === cookie.invoiceData.customers[currentCustomer.id].team) { return s }
 	}).filter(function(s){ return s; })[0];
 
-	var bill = { company: company.name,
+	var bill = { companyName: company.name,
+		     companyAddress: company.address,
 		     bankName: company.bankName,
 		     bic: company.bic,
 		     iban: company.iban,
-		     customer: customer.name,
+		     customerName: customer.name,
+		     customerAddress: customer.address,
+		     customerDetail: customer.detail,
 		     reference: customer.reference,
 		     date: getNiceDate(now),
 		     number: billNumber,
 		     id: "",
 		     intrest: "",
 		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
-		     notice: "" }
+		     notice: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))) }
 
 	var customerName = customer.name.replace(/\W+/g , "_");
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";

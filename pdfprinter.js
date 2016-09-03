@@ -51,9 +51,15 @@ function printHeader(doc, bill) {
 
     // Variable textfields
     doc.fontSize(11).font('Times-Bold')
-	.text(bill.company, 60, 36);
+	.text(bill.companyName, 60, 36);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.customer, 64, 120);
+	.text(bill.companyAddress, 60, 48);
+    doc.fontSize(11).font('Times-Bold')
+	.text(bill.customerName, 64, 120);
+    doc.fontSize(11).font('Times-Roman')
+	.text(bill.customerAddress, 64, 132);
+    doc.fontSize(11).font('Times-Italic')
+	.text("(" + bill.customerDetail + ")", 64, 146);
     doc.fontSize(8).font('Times-Roman')
 	.text(bill.date, 372, 71)
 	.text(bill.number, 372, 120)
@@ -116,7 +122,7 @@ function printFooter(doc, bill, total) {
 
     // Variable textfields
     doc.fontSize(7).font('Times-Roman')
-	.text(bill.company, 57, 522)
+	.text(bill.companyName, 57, 522)
 	.text(bill.bankName, 445, 530)
 	.text(("IBAN " + bill.iban), 445, 538)
 	.text(("BIC " + bill.bic), 445, 546);
@@ -124,8 +130,9 @@ function printFooter(doc, bill, total) {
     doc.fontSize(10).font('Times-Roman')
 	.text((bill.bankName + "    " + bill.iban), 84, 592)
 	.text(bill.bic, 323, 592)
-	.text(bill.company, 84, 623)
-	.text(bill.customer, 84, 656)
+	.text(bill.companyName, 84, 623)
+	.text(bill.customerName, 84, 656)
+	.text(bill.customerAddress, 84, 668)
 	.text(bill.reference, 360, 732)
 	.text(bill.expireDate, 360, 756)
 	.text(total.toFixed(2), 540, 756);
