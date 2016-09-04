@@ -92,13 +92,22 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_D", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_E", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_F", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_G", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_H", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_I", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_J", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_INVOICE_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_INVOICE_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_INVOICE_C", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_INVOICE_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_E", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_F", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_G", language) + "\n" +
+	printLanguageVariable("UI_TEXT_EDIT_INVOICE_H", language) + "\n" +
 	printLanguageVariable("UI_TEXT_ALERT_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_ALERT_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_C", language) + "\n\n";
+	printLanguageVariable("UI_TEXT_ALERT_C", language) + "\n" +
+	printLanguageVariable("UI_TEXT_ALERT_D", language) + "\n\n";
 }
 
 var webServer = http.createServer(function(request,response){

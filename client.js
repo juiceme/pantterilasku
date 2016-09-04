@@ -309,9 +309,9 @@ function createEditInvoicesView(invoiceData) {
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(table);
     fieldset.appendChild(document.createElement('br'));
-    acceptButton.appendChild(document.createTextNode("Save!"));
+    acceptButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_G)));
     acceptButton.onclick = function() { saveInvoiceDataEdit(invoiceData); }
-    cancelButton.appendChild(document.createTextNode("Cancel!"));
+    cancelButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_H)));
     cancelButton.onclick = function() { cancelInvoiceDataEdit(invoiceData); }
     fieldset.appendChild(acceptButton);
     fieldset.appendChild(cancelButton);
@@ -377,13 +377,13 @@ function createInvoiceEditTableRow(count, invoiceData, invoice, lastRow) {
     var cell4 = document.createElement('td');
     if(lastRow) {
 	var addButton = document.createElement("button");
-	addButton.appendChild(document.createTextNode("Create"));
+	addButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_E)));
 	addButton.id = count;
 	addButton.onclick = function() { createInvoiceToList(invoiceData, this); }
 	cell4.appendChild(addButton);
     } else {
 	var deleteButton = document.createElement("button");
-	deleteButton.appendChild(document.createTextNode("Delete"));
+	deleteButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_F)));
 	deleteButton.id = count;
 	deleteButton.onclick = function() { deleteInvoiceFromList(invoiceData, this); }
 	cell4.appendChild(deleteButton);
@@ -473,9 +473,9 @@ function createEditCustomersView(invoiceData) {
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(table);
     fieldset.appendChild(document.createElement('br'));
-    acceptButton.appendChild(document.createTextNode("Save!"));
+    acceptButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_CUSTOMER_I)));
     acceptButton.onclick = function() { saveCustomerDataEdit(invoiceData); }
-    cancelButton.appendChild(document.createTextNode("Cancel!"));
+    cancelButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_CUSTOMER_J)));
     cancelButton.onclick = function() { cancelCustomerDataEdit(invoiceData); }
     fieldset.appendChild(acceptButton);
     fieldset.appendChild(cancelButton);
@@ -549,13 +549,13 @@ function createCustomerEditTableRow(count, invoiceData, customer, lastRow) {
     var cell7 = document.createElement('td');
     if(lastRow) {
 	var addButton = document.createElement("button");
-	addButton.appendChild(document.createTextNode("Create"));
+	addButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_CUSTOMER_G)));
 	addButton.id = count;
 	addButton.onclick = function() { createCustomerToList(invoiceData, this); }
 	cell7.appendChild(addButton);
     } else {
 	var deleteButton = document.createElement("button");
-	deleteButton.appendChild(document.createTextNode("Delete"));
+	deleteButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_CUSTOMER_H)));
 	deleteButton.id = count;
 	deleteButton.onclick = function() { deleteCustomerFromList(invoiceData, this); }
 	cell7.appendChild(deleteButton);
@@ -688,7 +688,7 @@ function sendAllEmails(invoiceData) {
 	return false;
     }
 
-    if (confirm('Are you sure you want to bulk email invoices?')) {
+    if (confirm(uiText(UI_TEXT_ALERT_D))) {
 	var clientSendable = { emailText: document.getElementById("myEmailTextArea").value,
 			       invoices: invoices };
 	var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
