@@ -1,6 +1,8 @@
 # pantterilasku
 
 A multiuser node.js invoice/bill creation utility handy for generating and emailing PDF-formatted invoices to multiple recipients.
+Primary target audience is treasurers of sports teams who need to regularily send bills to their teams.
+The name "Pantterilasku" comes from the floorball team "Järvenpään Pantterit" which was inspiration for the application.
 
 ## Description
 
@@ -12,8 +14,8 @@ Pantterilasku supports multiple users, each having only view of the customers th
 
 ## Installation
 
-Pantterilasku requires websocket, pdfkit and emailjs npm modules. You can install all depencencies by "npm install"
-The repository clones AES library as submodule, You need to install it by "git submodule init; git submodule update"
+Pantterilasku requires websocket, pdfkit, emailjs and archiver npm modules. You can install all depencencies by "npm install"
+The repository also clones AES library and datastorage as submodules, You need to install those by "git submodule init; git submodule update"
 
 ## Features
 
@@ -21,6 +23,7 @@ The repository clones AES library as submodule, You need to install it by "git s
 * Recipients managed in JSON file
 * Item list managed in JSON file
 * Web frontend to manage, generate and batch-email invoices/bills
+* eb frontend to manage customer list and list of itemized bills.
 * Uses AES-CTR encryption between server and client to defeat man-in-the-middle attacks.
 * Preview for generated PDF invoices in the browser
 * Automatic batch mailing of invoices
