@@ -248,7 +248,9 @@ function processLoginResponse(cookie, content) {
 	setState(cookie, "loggedIn");
 	setStatustoClient(cookie, "Login OK");
 	if(getUserPriviliges(cookie.user).length === 0) {
-	    sendable = { type: "unpriviligedLogin", content: "<b>Käyttäjätunnuksesi on luotu onnistuneesti.</b><br><br>Jotta voit aloittaa Pantterilaskun käytön, pyydä käyttöoikeudet ylläpidolta;<br><br>Lähetä söhköpostia osoitteeseen juice@swagman.org ja kerro joukkueesi nimi." };
+	    sendable = { type: "unpriviligedLogin",
+			 content: getLanguageText(mainConfig.main.language, "HELPTEXT_UNPRIVILIGED_A") };
+
 	    sendCipherTextToClient(cookie, sendable);
 	    servicelog("Sent unpriviligedLogin info to client #" + cookie.count);
 	} else {
