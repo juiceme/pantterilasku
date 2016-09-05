@@ -107,7 +107,8 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_ALERT_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_ALERT_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_ALERT_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_D", language) + "\n\n";
+	printLanguageVariable("UI_TEXT_ALERT_D", language) + "\n" +
+	printLanguageVariable("UI_TEXT_ALERT_E", language) + "\n\n";
 }
 
 var webServer = http.createServer(function(request,response){

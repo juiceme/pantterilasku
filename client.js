@@ -688,7 +688,8 @@ function sendAllEmails(invoiceData) {
 	return false;
     }
 
-    if (confirm(uiText(UI_TEXT_ALERT_D))) {
+    var confirmText = uiText(UI_TEXT_ALERT_D) + " " + invoices.length + " " + uiText(UI_TEXT_ALERT_E);
+    if (confirm(confirmText)) {
 	var clientSendable = { emailText: document.getElementById("myEmailTextArea").value,
 			       invoices: invoices };
 	var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
