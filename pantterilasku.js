@@ -351,14 +351,9 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 	return null;
     }
 
-    servicelog("********** : " + JSON.stringify(cookie.invoiceData));
-    servicelog("********** : " + JSON.stringify(customer));
-
     var company = cookie.invoiceData.company.map(function(s) {
 	if(s.id === cookie.invoiceData.customers[customer].team) { return s }
     }).filter(function(s){ return s; })[0];
-
-    servicelog("********** : " + JSON.stringify(company));
 
     var bill = { companyName: company.name,
 		 companyAddress: company.address,
