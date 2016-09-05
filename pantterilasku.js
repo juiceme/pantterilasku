@@ -86,6 +86,7 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_MAIN_F", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_G", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_H", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_I", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
@@ -309,35 +310,35 @@ function processSaveInvoiceList(cookie, content) {
 
 function processPdfPreview(cookie, content) {
     var previewData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requestes PDF preview " + JSON.stringify(previewData.invoices));
+    servicelog("Client #" + cookie.count + " requests PDF preview " + JSON.stringify(previewData));
     setStatustoClient(cookie, "Printing preview");
-    printPreview(pushPreviewToClient, cookie, previewData.customer, previewData.invoices);
+    printPreview(pushPreviewToClient, cookie, previewData);
 }
 
 function processSendInvoices(cookie, content) {
     cookie.sentMailList = [];
     var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requestes bulk mailing " + JSON.stringify(invoiceData.invoices));
+    servicelog("Client #" + cookie.count + " requests bulk mailing " + JSON.stringify(invoiceData));
     if(userHasSendEmailPrivilige(cookie.user)) {
 	setStatustoClient(cookie, "Sending bulk email");
 	saveEmailText(cookie, invoiceData.emailText);
-	sendBulkEmail(cookie, invoiceData.emailText, invoiceData.invoices);
+	sendBulkEmail(cookie, invoiceData);
     } else {
 	servicelog("user has insufficent priviliges to send email");
 	setStatustoClient(cookie, "Cannot send email!");
     }
 }
 
-function printPreview(callback, cookie, customer, selectedInvoices)
+function printPreview(callback, cookie, previewData)
 {
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
     var invoice = cookie.invoiceData.invoices.map(function(a, b) {
-	if(selectedInvoices.map(function(e) {
+	if(previewData.invoices.map(function(e) {
 	    return e.item;
 	}).indexOf(b) >= 0) {
-	    a.n = selectedInvoices[selectedInvoices.map(function(e) {
+	    a.n = previewData.invoices[previewData.invoices.map(function(e) {
 		return e.item;
 	    }).indexOf(b)].count;
 	    return a;
@@ -353,7 +354,7 @@ function printPreview(callback, cookie, customer, selectedInvoices)
     }
 
     var company = cookie.invoiceData.company.map(function(s) {
-	if(s.id === cookie.invoiceData.customers[customer].team) { return s }
+	if(s.id === cookie.invoiceData.customers[previewData.customer].team) { return s }
     }).filter(function(s){ return s; })[0];
 
     var bill = { companyName: company.name,
@@ -361,36 +362,36 @@ function printPreview(callback, cookie, customer, selectedInvoices)
 		 bankName: company.bankName,
 		 bic: company.bic,
 		 iban: company.iban,
-		 customerName: cookie.invoiceData.customers[customer].name,
-		 customerAddress: cookie.invoiceData.customers[customer].address,
-		 customerDetail: cookie.invoiceData.customers[customer].detail,
-		 reference: cookie.invoiceData.customers[customer].reference,
+		 customerName: cookie.invoiceData.customers[previewData.customer].name,
+		 customerAddress: cookie.invoiceData.customers[previewData.customer].address,
+		 customerDetail: cookie.invoiceData.customers[previewData.customer].detail,
+		 reference: cookie.invoiceData.customers[previewData.customer].reference,
 		 date: getNiceDate(now),
 		 number: "",
 		 id: "",
 		 intrest: "",
-		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
+		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*previewData.dueDate))),
 		 notice: "14 vrk." }
 
     pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     servicelog("Created PDF preview document");
 }
 
-function sendBulkEmail(cookie, emailText, allInvoices) {
+function sendBulkEmail(cookie, invoiceData) {
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var customerCount = 0;
 
-    if(allInvoices.length === 0) {
+    if(invoiceData.invoices.length === 0) {
 	servicelog("Invoice empty, not emailing PDF documents");
 	setStatustoClient(cookie, "No mailing available");
 	return null;
     }
 
-    allInvoices.forEach(function(currentCustomer) {
+    invoiceData.invoices.forEach(function(currentCustomer) {
 	customerCount++;
 	var customer = cookie.invoiceData.customers.map(function(a, b) {
-	    if(currentCustomer.id === b) { return a; }
+	    if(currentCustomer.id === b) { a.dueDate = currentCustomer.dueDate;  return a; }
 	}).filter(function(s){ return s; })[0];
 
 	var invoiceRows = cookie.invoiceData.invoices.map(function(a, b) {
@@ -421,13 +422,13 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 		     number: billNumber,
 		     id: "",
 		     intrest: "",
-		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*14))),
+		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*customer.dueDate))),
 		     notice: "14 vrk." }
 
 	var customerName = customer.name.replace(/\W+/g , "_");
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
-	var mailDetails = { text: emailText,
+	var mailDetails = { text: invoiceData.emailText,
 			    from: cookie.user.realname + " <" + cookie.user.email + ">",
 			    to:  customer.email,
 			    subject: "Uusi lasku " + company.name + " / " + billNumber,
@@ -437,7 +438,8 @@ function sendBulkEmail(cookie, emailText, allInvoices) {
 
 	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
 
-	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending", allInvoices.length, billNumber);
+	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending",
+			      invoiceData.invoices.length, billNumber);
 	servicelog("Sent PDF emails");
     });
 }

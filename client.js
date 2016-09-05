@@ -127,6 +127,8 @@ function createCustomerTable(invoiceData) {
 	}
 	hCellN.appendChild(checkBox);
     }
+    var hCellN = hRow1.insertCell(6);
+    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
     invoiceData.customers.forEach(function(s) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -150,9 +152,35 @@ function createCustomerTable(invoiceData) {
 	    cellN.appendChild(createSelectionList(clientCount, i));
 	    row.appendChild(cellN);
 	}
+	var cellD = document.createElement('td');
+	var dueDateSelector = document.createElement('select');
+	var dueDateOption1 = document.createElement('option');
+	var dueDateOption2 = document.createElement('option');
+	var dueDateOption3 = document.createElement('option');
+	var dueDateOption4 = document.createElement('option');
+	var dueDateOption5 = document.createElement('option');
+	dueDateOption1.text = "heti"
+	dueDateOption1.value = 0;
+	dueDateSelector.add(dueDateOption1);
+	dueDateOption2.text = "1 viikko"
+	dueDateOption2.value = 7;
+	dueDateSelector.add(dueDateOption2);
+	dueDateOption3.text = "2 viikkoa"
+	dueDateOption3.value = 14;
+	dueDateSelector.add(dueDateOption3);
+	dueDateOption4.text = "3 viikkoa"
+	dueDateOption4.value = 21;
+	dueDateSelector.add(dueDateOption4);
+	dueDateOption5.text = "4 viikkoa"
+	dueDateOption5.value = 28;
+	dueDateSelector.add(dueDateOption5);
+	dueDateSelector.id = "dd_" + clientCount;
+	dueDateSelector.value = 14;
+	cellD.appendChild(dueDateSelector);
+	row.appendChild(cellD);
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
-	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_H));
+	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_I));
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
 	previewLink.number = clientCount;
@@ -235,7 +263,10 @@ function getPreviewPdf(link, invoiceData) {
 	}
     }
 
-    var clientSendable = { customer: link.number, invoices: selectedInvoices };
+    var ddSelection = document.getElementById("dd_" + link.number);
+    var ddValue = parseInt(ddSelection.options[ddSelection.selectedIndex].value);
+
+    var clientSendable = { customer: link.number, invoices: selectedInvoices, dueDate: ddValue };
     var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
     var sendable = { type: "getPdfPreview",
 		     content : encryptedSendable };
@@ -426,7 +457,7 @@ function createEmailText(invoiceData) {
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
+    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
     var row = document.createElement('tr');
     var cell1 = document.createElement('td');
     cell1.appendChild(textArea);
@@ -674,7 +705,12 @@ function sendAllEmails(invoiceData) {
 		customer.invoices.push({ item : iValue, count : nValue });
 	    }
 	}
-	if(invoiceExists) { invoices.push(customer); }
+	if(invoiceExists) {
+	    var ddSelection = document.getElementById("dd_" + i);
+	    customer.dueDate = parseInt(ddSelection.options[ddSelection.selectedIndex].value);
+	    invoices.push(customer);
+	}
+
 	i++;
     });
 
