@@ -57,11 +57,13 @@ function printHeader(doc, bill) {
     doc.fontSize(11).font('Times-Bold')
 	.text(bill.customerName, 64, 120);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.customerAddress, 64, 132);
+	.text(bill.customerAddress, 64, 134);
     if(bill.customerDetail) {
+	var spacing = bill.customerAddress.split(/\r\n|\r|\n/).length * 12
 	doc.fontSize(11).font('Times-Italic')
-	    .text("(" + bill.customerDetail + ")", 64, 146);
+	    .text("(" + bill.customerDetail + ")", 64, 136 + spacing);
     }
+
     doc.fontSize(8).font('Times-Roman')
 	.text(bill.date, 372, 71)
 	.text(bill.number, 372, 120)
