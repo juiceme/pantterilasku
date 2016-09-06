@@ -123,13 +123,18 @@ function createCustomerTable(invoiceData) {
 	checkBox.type = "checkbox";
 	checkBox.id = i;
 	checkBox.value = "0"
-	checkBox.onclick = function() {
-	    toggleAllBoxes(this, invoiceData.customers);
-	}
+	checkBox.onclick = function() { toggleAllBoxes(this, invoiceData.customers); }
 	hCellN.appendChild(checkBox);
     }
     var hCellN = hRow1.insertCell(6);
-    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
+    hCellN.colSpan = "2";
+    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b> ";
+
+    var dueDateSelector = createDueDateSelector();
+    dueDateSelector.id = "dd_selector";
+    dueDateSelector.onclick = function() { toggleAllDueDays(this, invoiceData.customers); }
+    hCellN.appendChild(dueDateSelector);
+
     invoiceData.customers.forEach(function(s) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -154,29 +159,8 @@ function createCustomerTable(invoiceData) {
 	    row.appendChild(cellN);
 	}
 	var cellD = document.createElement('td');
-	var dueDateSelector = document.createElement('select');
-	var dueDateOption1 = document.createElement('option');
-	var dueDateOption2 = document.createElement('option');
-	var dueDateOption3 = document.createElement('option');
-	var dueDateOption4 = document.createElement('option');
-	var dueDateOption5 = document.createElement('option');
-	dueDateOption1.text = "heti"
-	dueDateOption1.value = 0;
-	dueDateSelector.add(dueDateOption1);
-	dueDateOption2.text = "1 viikko"
-	dueDateOption2.value = 7;
-	dueDateSelector.add(dueDateOption2);
-	dueDateOption3.text = "2 viikkoa"
-	dueDateOption3.value = 14;
-	dueDateSelector.add(dueDateOption3);
-	dueDateOption4.text = "3 viikkoa"
-	dueDateOption4.value = 21;
-	dueDateSelector.add(dueDateOption4);
-	dueDateOption5.text = "4 viikkoa"
-	dueDateOption5.value = 28;
-	dueDateSelector.add(dueDateOption5);
+	var dueDateSelector = createDueDateSelector();
 	dueDateSelector.id = "dd_" + clientCount;
-	dueDateSelector.value = 14;
 	cellD.appendChild(dueDateSelector);
 	row.appendChild(cellD);
 	var cellP = document.createElement('td');
@@ -197,6 +181,32 @@ function createCustomerTable(invoiceData) {
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
     return table;
+}
+
+function createDueDateSelector() {
+    var dueDateSelector = document.createElement('select');
+    var dueDateOption1 = document.createElement('option');
+    var dueDateOption2 = document.createElement('option');
+    var dueDateOption3 = document.createElement('option');
+    var dueDateOption4 = document.createElement('option');
+    var dueDateOption5 = document.createElement('option');
+    dueDateOption1.text = "heti"
+    dueDateOption1.value = 0;
+    dueDateSelector.add(dueDateOption1);
+    dueDateOption2.text = "1 viikko"
+    dueDateOption2.value = 7;
+    dueDateSelector.add(dueDateOption2);
+    dueDateOption3.text = "2 viikkoa"
+    dueDateOption3.value = 14;
+    dueDateSelector.add(dueDateOption3);
+    dueDateOption4.text = "3 viikkoa"
+    dueDateOption4.value = 21;
+    dueDateSelector.add(dueDateOption4);
+    dueDateOption5.text = "4 viikkoa"
+    dueDateOption5.value = 28;
+    dueDateSelector.add(dueDateOption5);
+    dueDateSelector.value = 14;
+    return dueDateSelector;
 }
 
 function createSelectionList(clientCount, index) {
@@ -227,6 +237,16 @@ function toggleAllBoxes(checkBox, customers) {
 	i++;
     });
     return false;
+}
+
+function toggleAllDueDays(selectionList, customers) {
+    var i=0;
+    var nValue = parseInt(selectionList.options[selectionList.selectedIndex].value);
+    customers.forEach(function(s) {
+	var subSelectionList = "dd_" + i;
+	document.getElementById(subSelectionList).value = nValue;
+	i++;
+    });
 }
 
 function toggleSelectionList(checkBox) {
