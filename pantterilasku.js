@@ -87,6 +87,7 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_MAIN_G", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_H", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_I", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_J", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
@@ -176,6 +177,8 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processPdfPreview(cookie, content); }
 	    if((type === "sendInvoices") &&
 	       stateIs(cookie, "loggedIn")) { processSendInvoices(cookie, content); }
+	    if((type === "downloadInvoices") &&
+	       stateIs(cookie, "loggedIn")) { processDownloadInvoices(cookie, content); }
 	    if((type === "resetToMain") &&
 	       stateIs(cookie, "loggedIn")) { processResetToMainState(cookie, content); }
 	    if((type === "saveCustomerList") &&
@@ -329,6 +332,14 @@ function processSendInvoices(cookie, content) {
     }
 }
 
+function processDownloadInvoices(cookie, content) {
+    cookie.sentMailList = [];
+    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requests invoice downloading " + JSON.stringify(invoiceData));
+    setStatustoClient(cookie, "Downloading invoices");
+    downloadInvoicesToClient(cookie, invoiceData);
+}
+
 function printPreview(callback, cookie, previewData)
 {
     var filename = "./temp/preview.pdf";
@@ -441,6 +452,65 @@ function sendBulkEmail(cookie, invoiceData) {
 	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending",
 			      invoiceData.invoices.length, billNumber);
 	servicelog("Sent PDF emails");
+    });
+}
+
+function downloadInvoicesToClient(cookie, invoiceData) {
+    var now = new Date();
+    var billNumber = getniceDateTime(now);
+    var customerCount = 0;
+
+    if(invoiceData.invoices.length === 0) {
+	servicelog("Invoice empty, not downloading PDF documents");
+	setStatustoClient(cookie, "No downloading available");
+	return null;
+    }
+
+    invoiceData.invoices.forEach(function(currentCustomer) {
+	customerCount++;
+	var customer = cookie.invoiceData.customers.map(function(a, b) {
+	    if(currentCustomer.id === b) { a.dueDate = currentCustomer.dueDate;  return a; }
+	}).filter(function(s){ return s; })[0];
+
+	var invoiceRows = cookie.invoiceData.invoices.map(function(a, b) {
+	    if(currentCustomer.invoices.map(function(e) {
+		return e.item;
+	    }).indexOf(b) >= 0) {
+		a.n = currentCustomer.invoices[currentCustomer.invoices.map(function(e) {
+		    return e.item;
+		}).indexOf(b)].count;
+		return a;
+	    }
+	}).filter(function(s){ return s; });
+
+	var company = cookie.invoiceData.company.map(function(s) {
+	    if(s.id === cookie.invoiceData.customers[currentCustomer.id].team) { return s }
+	}).filter(function(s){ return s; })[0];
+
+	var bill = { companyName: company.name,
+		     companyAddress: company.address,
+		     bankName: company.bankName,
+		     bic: company.bic,
+		     iban: company.iban,
+		     customerName: customer.name,
+		     customerAddress: customer.address,
+		     customerDetail: customer.detail,
+		     reference: customer.reference,
+		     date: getNiceDate(now),
+		     number: billNumber,
+		     id: "",
+		     intrest: "",
+		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*customer.dueDate))),
+		     notice: "14 vrk." }
+
+	var customerName = customer.name.replace(/\W+/g , "_");
+	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
+
+	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
+
+	pdfprinter.printSheet(dontSendEmail, cookie, null, filename, bill, invoiceRows, "invoice downloading",
+			      invoiceData.invoices.length, billNumber);
+	servicelog("Created PDF documents");
     });
 }
 
@@ -863,6 +933,13 @@ function sendVerificationEmail(cookie, recipientAddress) {
 			subject: emailSubject };
 
     sendEmail(cookie, mailDetails, false, "account verification", false, false);
+}
+
+function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, billNumber) {
+    cookie.sentMailList.push(filename);
+    if(cookie.sentMailList.length === totalInvoiceCount) {
+	pushSentEmailZipToClient(cookie, billNumber);
+    }
 }
 
 function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, billNumber) {

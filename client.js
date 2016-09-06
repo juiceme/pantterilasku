@@ -93,6 +93,7 @@ function createUserView(invoiceData) {
     fieldset.appendChild(createEmailText(invoiceData));
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(createSendButton(invoiceData));
+    fieldset.appendChild(createDownloadButton(invoiceData));
     fieldset.appendChild(document.createElement('br'));
     fieldset.id= "myDiv1";
     return fieldset;
@@ -113,8 +114,8 @@ function createCustomerTable(invoiceData) {
     hCell0.colSpan = "2";
     hCell0.rowSpan = "2";
     hCell1.colSpan = 6;
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_E) + "</b>";
-    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
+    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
     for(var i=0; i<6; i++) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
@@ -128,7 +129,7 @@ function createCustomerTable(invoiceData) {
 	hCellN.appendChild(checkBox);
     }
     var hCellN = hRow1.insertCell(6);
-    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
+    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
     invoiceData.customers.forEach(function(s) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -180,7 +181,7 @@ function createCustomerTable(invoiceData) {
 	row.appendChild(cellD);
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
-	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_I));
+	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_J));
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
 	previewLink.number = clientCount;
@@ -281,7 +282,7 @@ function createInvoiceTable(invoiceData) {
     var hRow = tableHeader.insertRow(0);    
     var hCell0 = hRow.insertCell(0);
     var hCell1 = hRow.insertCell(1);
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
     for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -457,7 +458,7 @@ function createEmailText(invoiceData) {
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
+    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
     var row = document.createElement('tr');
     var cell1 = document.createElement('td');
     cell1.appendChild(textArea);
@@ -658,6 +659,13 @@ function createSendButton(invoiceData) {
     return sendEmailButton;
 }
 
+function createDownloadButton(invoiceData) {
+    var downloadButton = document.createElement('button');
+    downloadButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_E)));
+    downloadButton.onclick = function() { downloadInvoices(invoiceData); }
+    return downloadButton;
+}
+
 function editCustomers(invoiceData) {
     document.body.replaceChild(createEditCustomersView(invoiceData),
 			       document.getElementById("myDiv1"));
@@ -688,7 +696,7 @@ function cancelCustomerDataEdit(invoiceData) {
     sendToServerEncrypted("resetToMain", {});
 }
 
-function sendAllEmails(invoiceData) {
+function createSendableList(invoiceData) {
     var invoices = [];
     var i = 0;
     invoiceData.customers.forEach(function(s) {
@@ -713,12 +721,16 @@ function sendAllEmails(invoiceData) {
 
 	i++;
     });
+    return invoices;
+}
 
+function sendAllEmails(invoiceData) {
     if(!havePrivilige(invoiceData.priviliges, "email-send")) {
 	alert(uiText(UI_TEXT_ALERT_B));
 	return false;
     }
 
+    var invoices = createSendableList(invoiceData);
     if(invoices.length === 0) {
 	alert(uiText(UI_TEXT_ALERT_C));
 	return false;
@@ -736,6 +748,23 @@ function sendAllEmails(invoiceData) {
     } else {
 	// Do nothing!
     }
+
+    return false;
+}
+
+function downloadInvoices(invoiceData) {
+    var invoices = createSendableList(invoiceData);
+    if(invoices.length === 0) {
+	alert(uiText(UI_TEXT_ALERT_C));
+	return false;
+    }
+
+    var clientSendable = { invoices: invoices };
+    var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
+    var sendable = { type: "downloadInvoices",
+		     content : encryptedSendable };
+    mySocket.send(JSON.stringify(sendable));
+    document.documentElement.scrollTop = 0;
 
     return false;
 }
