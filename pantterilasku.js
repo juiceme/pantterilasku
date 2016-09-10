@@ -564,7 +564,7 @@ function saveEmailText(cookie, emailText) {
 
 function updateUserdataFromCookie(cookie) {
     var userData = readUserData();
-    var newUserData = { users : [] };
+    var newUserData = { users: [] };
 
     newUserData.users = userData.users.filter(function(u) {
 	return u.username !== cookie.user.username;
@@ -584,7 +584,7 @@ function updateCustomersFromClient(cookie, customers) {
 	if(cookie.user.applicationData.teams.indexOf(c.team) >= 0) { return c; }
     }).filter(function(s){ return s; });
 
-    var newCustomerData = { customers : [] };
+    var newCustomerData = { customers: [] };
     customerData.customers.forEach(function(c) {
 	if(checkedCustomers.filter(function(f) {
 	    return (f.team === c.team);
@@ -610,7 +610,7 @@ function updateInvoicesFromClient(cookie, invoices) {
 	if(c.user === cookie.user.username) { return c; }
     }).filter(function(s){ return s; });
 
-    var newInvoiceData = { invoices : [] };
+    var newInvoiceData = { invoices: [] };
     invoiceData.invoices.forEach(function(c) {
 	if(checkedInvoices.filter(function(f) {
 	    return (f.user === c.user);
@@ -755,7 +755,7 @@ function updateUserAccount(cookie, account) {
     if(oldUserAccount.length === 0) {
 	return false;
     } else {
-	var newUserData = { users : [] };
+	var newUserData = { users: [] };
 	newUserData.users = userData.users.filter(function(u) {
 	    return u.username !== account.username;
 	});
@@ -887,7 +887,7 @@ function validateAccountCode(code) {
     if(target.length === 0) {
 	return false;
     } else {
-	var newPendingUserData = { pending : [] };
+	var newPendingUserData = { pending: [] };
 	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
 	    return u.token.mail !== code.slice(0, 8);
 	});
@@ -911,7 +911,7 @@ function removePendingRequest(cookie, emailAdress) {
 	return u.email === emailAdress;
     }).length !== 0) {
 	servicelog("Removing duplicate entry from pending database");
-	var newPendingUserData = { pending : [] };
+	var newPendingUserData = { pending: [] };
 	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
             return u.email !== emailAdress;
 	});
@@ -1075,13 +1075,13 @@ function createUserInvoiceData(user) {
     });
 
     ownCustomers = sortByKey(ownCustomers, "name");
-    return { customers : ownCustomers,
-	     invoices : ownInvoices,
-	     company : ownCompany,
-	     emailText : user.applicationData.emailText,
-	     user : user.username,
-	     teams : user.applicationData.teams,
-	     priviliges : user.applicationData.priviliges };
+    return { customers: ownCustomers,
+	     invoices: ownInvoices,
+	     company: ownCompany,
+	     emailText: user.applicationData.emailText,
+	     user: user.username,
+	     teams: user.applicationData.teams,
+	     priviliges: user.applicationData.priviliges };
 }
 
 function createAdminData(cookie) {
@@ -1132,7 +1132,7 @@ setInterval(function() {
     }
     
     var purgeCount = 0
-    var newPendingUserData = { pending : [] };
+    var newPendingUserData = { pending: [] };
     pendingUserData.pending.forEach(function(r) {
 	if(r.date < now) {
 	    purgeCount++;
@@ -1158,23 +1158,23 @@ if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
 if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 
 // datastorage.setLogger(servicelog);
-datastorage.initialize("main", { main : { port : 8080,
-					  language : "english",
-					  adminEmailAddess : "you <username@your-email.com>",
-					  siteFullUrl : "http://url.to.pantterilasku/" } });
-datastorage.initialize("language", { language : [ "finnish" , "english" ],
-				     substitution : [] });
-datastorage.initialize("users", { users : [] }, true);
-datastorage.initialize("pending", { pending : [] }, true);
-datastorage.initialize("customers", { customers : [] }, true);
-datastorage.initialize("invoices", { invoices : [] }, true);
-datastorage.initialize("company", { company : [] }, true);
-datastorage.initialize("email", { host : "smtp.your-email.com",
-				  user : "username",
-				  password : "password",
-				  sender : "you <username@your-email.com>",
-				  ssl : true,
-				  blindlyTrust : true });
+datastorage.initialize("main", { main: { port: 8080,
+					  language: "english",
+					  adminEmailAddess: "you <username@your-email.com>",
+					  siteFullUrl: "http://url.to.pantterilasku/" } });
+datastorage.initialize("language", { language: [ "finnish" , "english" ],
+				     substitution: [] });
+datastorage.initialize("users", { users: [] }, true);
+datastorage.initialize("pending", { pending: [] }, true);
+datastorage.initialize("customers", { customers: [] }, true);
+datastorage.initialize("invoices", { invoices: [] }, true);
+datastorage.initialize("company", { company: [] }, true);
+datastorage.initialize("email", { host: "smtp.your-email.com",
+				  user: "username",
+				  password: "password",
+				  sender: "you <username@your-email.com>",
+				  ssl: true,
+				  blindlyTrust: true });
 
 var mainConfig = datastorage.read("main");
 

@@ -11,7 +11,7 @@ mySocket.onopen = function (event) {
 mySocket.onmessage = function (event) {
     var receivable = JSON.parse(event.data);
 
-//    console.log("Received message : " + JSON.stringify(receivable));
+//    console.log("Received message: " + JSON.stringify(receivable));
 
     if(receivable.type == "statusData") {
         document.getElementById("myStatusField").value = receivable.content;
@@ -140,9 +140,9 @@ function createUserTable(adminData) {
     adminData.users.forEach(function(u) {
 	tableBody.appendChild(createUserEditTableRow(count++, adminData, u, false));
     });
-    var newUser = { username : "<username>",
-		    realname : "<name>",
-		    email : "<user@host>",
+    var newUser = { username: "<username>",
+		    realname: "<name>",
+		    email: "<user@host>",
 		    phone: "<phone>",
 		    applicationData: { priviliges: [], teams: ["<team>"] } };
     tableBody.appendChild(createUserEditTableRow(count, adminData, newUser, true));
@@ -596,7 +596,7 @@ function getPreviewPdf(link, invoiceData) {
 	    var nValue = parseInt(nSelection.options[nSelection.selectedIndex].value);
 	    var iSelection = document.getElementById("is_" + i);
 	    var iValue = parseInt(iSelection.options[iSelection.selectedIndex].value);
-	    selectedInvoices.push({ item : iValue, count : nValue });
+	    selectedInvoices.push({ item: iValue, count: nValue });
 	}
     }
 
@@ -606,7 +606,7 @@ function getPreviewPdf(link, invoiceData) {
     var clientSendable = { customer: link.number, invoices: selectedInvoices, dueDate: ddValue };
     var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
     var sendable = { type: "getPdfPreview",
-		     content : encryptedSendable };
+		     content: encryptedSendable };
     mySocket.send(JSON.stringify(sendable));
     return false;
 }
@@ -670,7 +670,7 @@ function createEditInvoicesView(invoiceData) {
 	tableBody.appendChild(createInvoiceEditTableRow(count, invoiceData, c, false));
 	count++;
     });
-    var newInvoice = { description : "<item>", price : "<0.00>", vat : "<0.00>" };
+    var newInvoice = { description: "<item>", price: "<0.00>", vat: "<0.00>" };
     tableBody.appendChild(createInvoiceEditTableRow(count, invoiceData, newInvoice, true));
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
@@ -772,9 +772,9 @@ function deleteInvoiceFromList(invoiceData, button) {
 }
 
 function createInvoiceToList(invoiceData, button) {
-    var newInvoice = { description : document.getElementById("ti_" + button.id + "_description").value,
-		       price : document.getElementById("ti_" + button.id + "_price").value,
-		       vat : document.getElementById("ti_" + button.id + "_vat").value };
+    var newInvoice = { description: document.getElementById("ti_" + button.id + "_description").value,
+		       price: document.getElementById("ti_" + button.id + "_price").value,
+		       vat: document.getElementById("ti_" + button.id + "_vat").value };
     invoiceData.invoices.push(newInvoice);
     document.body.replaceChild(createEditInvoicesView(invoiceData),
 			       document.getElementById("myDiv2"));
@@ -832,7 +832,7 @@ function createEditCustomersView(invoiceData) {
 	tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, c, false));
 	count++;
     });
-    var newCustomer = { name : "<name>", address : "<address>", detail : "<detail>", email : "<name@host>", reference : "<00000>", team : invoiceData.teams[0] };
+    var newCustomer = { name: "<name>", address: "<address>", detail: "<detail>", email: "<name@host>", reference: "<00000>", team: invoiceData.teams[0] };
     tableBody.appendChild(createCustomerEditTableRow(count, invoiceData, newCustomer, true));
     table.appendChild(tableHeader);
     table.appendChild(tableBody);
@@ -962,12 +962,12 @@ function deleteCustomerFromList(invoiceData, button) {
 }
 
 function createCustomerToList(invoiceData, button) {
-    var newCustomer = { name : document.getElementById("ta_" + button.id + "_name").value,
-			address : document.getElementById("ta_" + button.id + "_address").value,
-			detail : document.getElementById("ta_" + button.id + "_detail").value,
-			email : document.getElementById("ta_" + button.id + "_email").value,
-			reference : document.getElementById("ta_" + button.id + "_reference").value,
-			team : getSelectedTeam("ta_" + button.id + "_teamSelector") };
+    var newCustomer = { name: document.getElementById("ta_" + button.id + "_name").value,
+			address: document.getElementById("ta_" + button.id + "_address").value,
+			detail: document.getElementById("ta_" + button.id + "_detail").value,
+			email: document.getElementById("ta_" + button.id + "_email").value,
+			reference: document.getElementById("ta_" + button.id + "_reference").value,
+			team: getSelectedTeam("ta_" + button.id + "_teamSelector") };
     invoiceData.customers.push(newCustomer);
     document.body.replaceChild(createEditCustomersView(invoiceData),
 			       document.getElementById("myDiv2"));
@@ -1045,7 +1045,7 @@ function createSendableList(invoiceData) {
 		var nValue = parseInt(nSelection.options[nSelection.selectedIndex].value);
 		var iSelection = document.getElementById("is_" + j);
 		var iValue = parseInt(iSelection.options[iSelection.selectedIndex].value);
-		customer.invoices.push({ item : iValue, count : nValue });
+		customer.invoices.push({ item: iValue, count: nValue });
 	    }
 	}
 	if(invoiceExists) {
@@ -1077,7 +1077,7 @@ function sendAllEmails(invoiceData) {
 			       invoices: invoices };
 	var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
 	var sendable = { type: "sendInvoices",
-			 content : encryptedSendable };
+			 content: encryptedSendable };
 	mySocket.send(JSON.stringify(sendable));
 	document.documentElement.scrollTop = 0;
     } else {
@@ -1097,7 +1097,7 @@ function downloadInvoices(invoiceData) {
     var clientSendable = { invoices: invoices };
     var encryptedSendable = Aes.Ctr.encrypt(JSON.stringify(clientSendable), sessionPassword, 128);
     var sendable = { type: "downloadInvoices",
-		     content : encryptedSendable };
+		     content: encryptedSendable };
     mySocket.send(JSON.stringify(sendable));
     document.documentElement.scrollTop = 0;
 
