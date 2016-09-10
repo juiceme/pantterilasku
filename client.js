@@ -141,8 +141,8 @@ function saveAdminEdit(adminData) {
 	u.realname = document.getElementById("tu_" + count + "_realname").value;
 	u.email = document.getElementById("tu_" + count + "_email").value;
 	u.phone = document.getElementById("tu_" + count + "_phone").value;
-	u.applicationData = { priviliges: priviliges,
-			      teams: document.getElementById("tu_" + count + "_teams").value.split(",") };
+	u.applicationData.priviliges = priviliges;
+	u.applicationData.teams = document.getElementById("tu_" + count + "_teams").value.split(",");
 	count++;
     });
 
