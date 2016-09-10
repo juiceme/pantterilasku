@@ -88,6 +88,8 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_MAIN_H", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_I", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_J", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_K", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_L", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
@@ -185,7 +187,8 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processSaveCustomerList(cookie, content); }
 	    if((type === "saveInvoiceList") &&
 	       stateIs(cookie, "loggedIn")) { processSaveInvoiceList(cookie, content); }
-
+	    if((type === "adminMode") &&
+	       stateIs(cookie, "loggedIn")) { processAdminMode(cookie, content); }
 	}
     });
 
@@ -338,6 +341,20 @@ function processDownloadInvoices(cookie, content) {
     servicelog("Client #" + cookie.count + " requests invoice downloading " + JSON.stringify(invoiceData));
     setStatustoClient(cookie, "Downloading invoices");
     downloadInvoicesToClient(cookie, invoiceData);
+}
+
+function processAdminMode(cookie, content) {
+    servicelog("Client #" + cookie.count + " requests Sytem Administration priviliges");
+    if(userHasSysAdminPrivilige(cookie.user)) {
+	servicelog("Granted Sytem Administration priviliges to user " + cookie.user.username);
+	sendable = { type: "adminData",
+		     content: createAdminData(cookie) };
+	sendCipherTextToClient(cookie, sendable);
+	servicelog("Sent adminData to client #" + cookie.count);
+    } else {
+	servicelog("user " + cookie.user.username + " does not have Sytem Administration priviliges!");
+	processClientStarted(cookie);
+    }	
 }
 
 function printPreview(callback, cookie, previewData)
@@ -799,6 +816,12 @@ function userHasSendEmailPrivilige(user) {
     return true;
 }
 
+function userHasSysAdminPrivilige(user) {
+    if(user.applicationData.priviliges.length === 0) { return false; }
+    if(user.applicationData.priviliges.indexOf("system-admin") < 0) { return false; }
+    return true;
+}
+
 function getUserPriviliges(user) {
     if(user.applicationData.priviliges.length === 0) { return []; }
     if(user.applicationData.priviliges.indexOf("none") > -1) { return []; }
@@ -1027,11 +1050,6 @@ function getNewChallenge() {
     return ("challenge_" + sha1.hash(globalSalt + new Date().getTime().toString()) + "1");
 }
 
-
-
-// ---------
-
-
 function createUserInvoiceData(user) {
     var customerData = datastorage.read("customers");
     var invoiceData = datastorage.read("invoices");
@@ -1064,6 +1082,11 @@ function createUserInvoiceData(user) {
 	     user : user.username,
 	     teams : user.applicationData.teams,
 	     priviliges : user.applicationData.priviliges };
+}
+
+function createAdminData(cookie) {
+    return { users: datastorage.read("users").users,
+	     companies: datastorage.read("company").company };
 }
 
 

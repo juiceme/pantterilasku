@@ -9,11 +9,11 @@
 <body>
 <form> status: <input type="text" id="myStatusField" value="" disabled></form>
 <br>
-<div id= "myLogoutButton"> </div>
+<div id = "myDiv1"> </div>
 <br>
-<div id= "myDiv1"> </div>
+<div id = "myDiv2"> </div>
 <br>
-<div id = "myHelpText"> </div>
+<div id = "myDiv3"> </div>
 
 <script language="javascript" type="text/javascript">
 

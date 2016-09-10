@@ -10,13 +10,16 @@ mySocket.onopen = function (event) {
 
 mySocket.onmessage = function (event) {
     var receivable = JSON.parse(event.data);
+
+//    console.log("Received message : " + JSON.stringify(receivable));
+
     if(receivable.type == "statusData") {
         document.getElementById("myStatusField").value = receivable.content;
     }
 
     if(receivable.type == "loginView") {
-	document.body.replaceChild(createLoginView(), document.getElementById("myDiv1"));
-	document.body.replaceChild(createLoginHelpText(), document.getElementById("myHelpText"));
+	document.body.replaceChild(createLoginView(), document.getElementById("myDiv2"));
+	document.body.replaceChild(createLoginHelpText(), document.getElementById("myDiv3"));
     }
 
     if(receivable.type == "loginChallenge") {
@@ -27,27 +30,35 @@ mySocket.onmessage = function (event) {
 
     if(receivable.type == "createNewAccount") {
 	var account = JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128));
- 	document.body.replaceChild(createNewAccountView(account), document.getElementById("myDiv1"));
+ 	document.body.replaceChild(createNewAccountView(account), document.getElementById("myDiv2"));
     }
 
     if(receivable.type == "unpriviligedLogin") {
 	var helpText = JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128));
-	document.body.replaceChild(createLogoutButton(),
-				   document.getElementById("myLogoutButton"));
-	document.body.replaceChild(createUnpriviligedView(helpText),
+	document.body.replaceChild(createTopButtons({type: "unpriviliged"}, false),
 				   document.getElementById("myDiv1"));
+	document.body.replaceChild(createUnpriviligedView(helpText),
+				   document.getElementById("myDiv2"));
 	var helpTextDiv = document.createElement('div');
-	helpTextDiv.id = "myHelpText"
-	document.body.replaceChild(helpTextDiv, document.getElementById("myHelpText"));
+	helpTextDiv.id = "myDiv3"
+	document.body.replaceChild(helpTextDiv, document.getElementById("myDiv3"));
     }
 
     if(receivable.type == "invoiceData") {
-	var invoiceData = receivable.content;
-	document.body.replaceChild(createLogoutButton(),
-				   document.getElementById("myLogoutButton"));
-	document.body.replaceChild(createUserView(invoiceData),
+	var invoiceData = JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128));
+	document.body.replaceChild(createTopButtons({type: "user"}, invoiceData),
 				   document.getElementById("myDiv1"));
-	document.body.replaceChild(createUserHelpText(), document.getElementById("myHelpText"));
+	document.body.replaceChild(createUserView(invoiceData),
+				   document.getElementById("myDiv2"));
+	document.body.replaceChild(createUserHelpText(), document.getElementById("myDiv3"));
+   }
+
+    if(receivable.type == "adminData") {
+	var adminData = JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128));
+	document.body.replaceChild(createTopButtons({type: "admin"}, false),
+				   document.getElementById("myDiv1"));
+	document.body.replaceChild(createAdminView(adminData),
+				   document.getElementById("myDiv2"));
     }
 
     if(receivable.type == "pdfUpload") {
@@ -75,12 +86,11 @@ function createUnpriviligedView(helpText) {
     table.appendChild(row);
     fieldset.appendChild(table);
     fieldset.appendChild(document.createElement('br'));
-    fieldset.id = "myDiv1";
+    fieldset.id = "myDiv2";
     return fieldset;
 }
 
 function createUserView(invoiceData) {
-    var invoiceData = JSON.parse(Aes.Ctr.decrypt(invoiceData, sessionPassword, 128));
     var fieldset = document.createElement('fieldsetset');
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(createCustomerTable(invoiceData));
@@ -95,8 +105,315 @@ function createUserView(invoiceData) {
     fieldset.appendChild(createSendButton(invoiceData));
     fieldset.appendChild(createDownloadButton(invoiceData));
     fieldset.appendChild(document.createElement('br'));
-    fieldset.id= "myDiv1";
+    fieldset.id= "myDiv2";
     return fieldset;
+}
+
+function createAdminView(adminData) {
+    var fieldset = document.createElement('fieldsetset');
+    fieldset.appendChild(createUserTable(adminData));
+    fieldset.appendChild(document.createElement('br'));
+    fieldset.appendChild(createCompanyTable(adminData));
+    fieldset.id= "myDiv2";
+    return fieldset;
+}
+
+function createUserTable(adminData) {
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+
+    var hRow = tableHeader.insertRow(0);    
+    var hCell0 = hRow.insertCell(0);
+    var hCell1 = hRow.insertCell(1);
+    var hCell2 = hRow.insertCell(2);
+    var hCell3 = hRow.insertCell(3);
+    var hCell4 = hRow.insertCell(4);
+    var hCell5 = hRow.insertCell(5);
+    hCell0.innerHTML = "<b>username</b>";
+    hCell1.innerHTML = "<b>realname</b>";
+    hCell2.innerHTML = "<b>email</b>";
+    hCell3.innerHTML = "<b>phone</b>";
+    hCell4.innerHTML = "<b>V / C / E / P</b>";
+    hCell5.innerHTML = "<b>teams</b>";
+    count=1;
+    adminData.users.forEach(function(u) {
+	tableBody.appendChild(createUserEditTableRow(count++, adminData, u, false));
+    });
+    var newUser = { username : "<username>",
+		    realname : "<name>",
+		    email : "<user@host>",
+		    phone: "<phone>",
+		    applicationData: { priviliges: [], teams: ["<team>"] } };
+    tableBody.appendChild(createUserEditTableRow(count, adminData, newUser, true));
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    return table;
+}
+
+function createCompanyTable(adminData) {
+    var table = document.createElement('table');
+    var tableHeader = document.createElement('thead');
+    var tableBody = document.createElement('tbody');
+
+    var hRow = tableHeader.insertRow(0);    
+    var hCell0 = hRow.insertCell(0);
+    var hCell1 = hRow.insertCell(1);
+    var hCell2 = hRow.insertCell(2);
+    var hCell3 = hRow.insertCell(3);
+    var hCell4 = hRow.insertCell(4);
+    var hCell5 = hRow.insertCell(5);
+    hCell0.innerHTML = "<b>id</b>";
+    hCell1.innerHTML = "<b>name</b>";
+    hCell2.innerHTML = "<b>address</b>";
+    hCell3.innerHTML = "<b>bank</b>";
+    hCell4.innerHTML = "<b>iban</b>";
+    hCell5.innerHTML = "<b>bic</b>";
+    count=1;
+    adminData.companies.forEach(function(c) {
+	tableBody.appendChild(createCompanyEditTableRow(count++, adminData, c, false));
+    });
+    var newCompany = { id: "<id>",
+		       name: "<name>",
+		       address: "<address>",
+		       bankName: "<bank>",
+		       iban: "<iban>",
+		       bic: "<bic>" };
+    tableBody.appendChild(createCompanyEditTableRow(count, adminData, newCompany, true));
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    return table;
+}
+
+function createCompanyEditTableRow(count, adminData, company, lastRow) {
+    row = document.createElement('tr');
+
+    if(lastRow) {
+	var cell0 = document.createElement('td');
+	var txtA0 = document.createElement("textarea");
+	txtA0.id = "tc_" + count + "_id";
+	txtA0.setAttribute('cols', 10);
+	txtA0.setAttribute('rows', 1);
+	txtA0.value = company.id;
+	cell0.appendChild(txtA0);
+	row.appendChild(cell0);
+    } else {
+	var cell0 = document.createElement('td');
+	cell0.appendChild(document.createTextNode(company.id));
+	row.appendChild(cell0);
+    }
+
+    var cell1 = document.createElement('td');
+    var txtA1 = document.createElement("textarea");
+    txtA1.id = "tc_" + count + "_name";
+    txtA1.setAttribute('cols', 20);
+    txtA1.setAttribute('rows', 1);
+    txtA1.value = company.name;
+    cell1.appendChild(txtA1);
+    row.appendChild(cell1);
+
+    var cell2 = document.createElement('td');
+    var txtA2 = document.createElement("textarea");
+    txtA2.id = "tc_" + count + "_address";
+    txtA2.setAttribute('cols', 25);
+    txtA2.setAttribute('rows', 1);
+    txtA2.value = company.address;
+    cell2.appendChild(txtA2);
+    row.appendChild(cell2);
+
+    var cell3 = document.createElement('td');
+    var txtA3 = document.createElement("textarea");
+    txtA3.id = "tc_" + count + "_bankName";
+    txtA3.setAttribute('cols', 15);
+    txtA3.setAttribute('rows', 1);
+    txtA3.value = company.bankName;
+    cell3.appendChild(txtA3);
+    row.appendChild(cell3);
+
+    var cell4 = document.createElement('td');
+    var txtA4 = document.createElement("textarea");
+    txtA4.id = "tc_" + count + "_iban";
+    txtA4.setAttribute('cols', 22);
+    txtA4.setAttribute('rows', 1);
+    txtA4.value = company.iban;
+    cell4.appendChild(txtA4);
+    row.appendChild(cell4);
+
+    var cell5 = document.createElement('td');
+    var txtA5 = document.createElement("textarea");
+    txtA5.id = "tc_" + count + "_bic";
+    txtA5.setAttribute('cols', 8);
+    txtA5.setAttribute('rows', 1);
+    txtA5.value = company.bic;
+    cell5.appendChild(txtA5);
+    row.appendChild(cell5);
+
+    var cell6 = document.createElement('td');
+    if(lastRow) {
+	var addButton = document.createElement("button");
+	addButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_E)));
+	addButton.id = count;
+	addButton.onclick = function() { createCompanyToList(adminData, this); }
+	cell6.appendChild(addButton);
+    } else {
+	var deleteButton = document.createElement("button");
+	deleteButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_F)));
+	deleteButton.id = count;
+	deleteButton.onclick = function() { deleteCompanyFromList(adminData, this); }
+	cell6.appendChild(deleteButton);
+    }
+    row.appendChild(cell6);
+
+    return row;
+}
+
+function createCompanyToList(adminData, button) {
+    var newCompany = { id: document.getElementById("tc_" + button.id + "_id").value,
+		       name: document.getElementById("tc_" + button.id + "_name").value,
+		       address: document.getElementById("tc_" + button.id + "_address").value,
+		       bankName: document.getElementById("tc_" + button.id + "_bankName").value,
+		       iban: document.getElementById("tc_" + button.id + "_iban").value,
+		       bic: document.getElementById("tc_" + button.id + "_bic").value };
+    adminData.companies.push(newCompany);
+    document.body.replaceChild(createAdminView(adminData),
+			       document.getElementById("myDiv2"));
+    return false;
+}
+
+function deleteCompanyFromList(adminData, button) {
+    var newCompany = adminData.companies.map(function(a,b) {
+	if(b != (button.id - 1)) { return a; }
+    }).filter(function(s){ return s; });
+    adminData.companies = newCompany;
+    document.body.replaceChild(createAdminView(adminData),
+			       document.getElementById("myDiv2"));
+    return false;
+}
+
+function createUserEditTableRow(count, adminData, user, lastRow) {
+    row = document.createElement('tr');
+
+    if(lastRow) {
+	var cell0 = document.createElement('td');
+	var txtA0 = document.createElement("textarea");
+	txtA0.id = "tu_" + count + "_username";
+	txtA0.setAttribute('cols', 10);
+	txtA0.setAttribute('rows', 1);
+	txtA0.value = user.username;
+	cell0.appendChild(txtA0);
+	row.appendChild(cell0);
+    } else {
+	var cell0 = document.createElement('td');
+	cell0.appendChild(document.createTextNode(user.username));
+	row.appendChild(cell0);
+    }
+
+    var cell1 = document.createElement('td');
+    var txtA1 = document.createElement("textarea");
+    txtA1.id = "tu_" + count + "_realname";
+    txtA1.setAttribute('cols', 20);
+    txtA1.setAttribute('rows', 1);
+    txtA1.value = user.realname;
+    cell1.appendChild(txtA1);
+    row.appendChild(cell1);
+
+    var cell2 = document.createElement('td');
+    var txtA2 = document.createElement("textarea");
+    txtA2.id = "tu_" + count + "_email";
+    txtA2.setAttribute('cols', 25);
+    txtA2.setAttribute('rows', 1);
+    txtA2.value = user.email;
+    cell2.appendChild(txtA2);
+    row.appendChild(cell2);
+
+    var cell3 = document.createElement('td');
+    var txtA3 = document.createElement("textarea");
+    txtA3.id = "tu_" + count + "_phone";
+    txtA3.setAttribute('cols', 12);
+    txtA3.setAttribute('rows', 1);
+    txtA3.value = user.phone;
+    cell3.appendChild(txtA3);
+    row.appendChild(cell3);
+
+    var cell4 = document.createElement('td');
+    var checkBox1 = document.createElement('input');
+    checkBox1.type = "checkbox";
+    checkBox1.id = "cbu_" + count + "_view";
+    checkBox1.checked = havePrivilige(user.applicationData.priviliges, "view");
+    cell4.appendChild(checkBox1);
+    var checkBox2 = document.createElement('input');
+    checkBox2.type = "checkbox";
+    checkBox2.id = "cbu_" + count + "_customer-edit";
+    checkBox2.checked = havePrivilige(user.applicationData.priviliges, "customer-edit");
+    cell4.appendChild(checkBox2);
+    var checkBox3 = document.createElement('input');
+    checkBox3.type = "checkbox";
+    checkBox3.id = "cbu_" + count + "_invoice-edit";
+    checkBox3.checked = havePrivilige(user.applicationData.priviliges, "invoice-edit");
+    cell4.appendChild(checkBox3);
+    var checkBox4 = document.createElement('input');
+    checkBox4.type = "checkbox";
+    checkBox4.id = "cbu_" + count + "_email-send";
+    checkBox4.checked = havePrivilige(user.applicationData.priviliges, "email-send");
+    cell4.appendChild(checkBox4);
+    row.appendChild(cell4);
+
+    var cell5 = document.createElement('td');
+    var txtA5 = document.createElement("textarea");
+    txtA5.id = "tu_" + count + "_teams";
+    txtA5.setAttribute('cols', 20);
+    txtA5.setAttribute('rows', 1);
+    txtA5.value = user.applicationData.teams;
+    cell5.appendChild(txtA5);
+    row.appendChild(cell5);
+
+    var cell6 = document.createElement('td');
+    if(lastRow) {
+	var addButton = document.createElement("button");
+	addButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_E)));
+	addButton.id = count;
+	addButton.onclick = function() { createUserToList(adminData, this); }
+	cell6.appendChild(addButton);
+    } else {
+	var deleteButton = document.createElement("button");
+	deleteButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_F)));
+	deleteButton.id = count;
+	deleteButton.onclick = function() { deleteUserFromList(adminData, this); }
+	cell6.appendChild(deleteButton);
+    }
+    row.appendChild(cell6);
+
+    return row;
+}
+
+function createUserToList(adminData, button) {
+    var priviliges = [];
+    if(document.getElementById("cbu_" + button.id + "_view").checked) { priviliges.push("view"); }
+    if(document.getElementById("cbu_" + button.id + "_customer-edit").checked) { priviliges.push("customer-edit"); }
+    if(document.getElementById("cbu_" + button.id + "_invoice-edit").checked) { priviliges.push("invoice-edit"); }
+    if(document.getElementById("cbu_" + button.id + "_email-send").checked) { priviliges.push("email-send"); }
+
+    var newUser = { username: document.getElementById("tu_" + button.id + "_username").value,
+		    realname: document.getElementById("tu_" + button.id + "_realname").value,
+		    email: document.getElementById("tu_" + button.id + "_email").value,
+		    phone: document.getElementById("tu_" + button.id + "_phone").value,
+		    applicationData: { priviliges: priviliges,
+				       teams: document.getElementById("tu_" + button.id + "_teams").value } };
+
+    adminData.users.push(newUser);
+    document.body.replaceChild(createAdminView(adminData),
+			       document.getElementById("myDiv2"));
+    return false;
+}
+
+function deleteUserFromList(adminData, button) {
+    var newUsers = adminData.users.map(function(a,b) {
+	if(b != (button.id - 1)) { return a; }
+    }).filter(function(s){ return s; });
+    adminData.users = newUsers;
+    document.body.replaceChild(createAdminView(adminData),
+			       document.getElementById("myDiv2"));
+    return false;
 }
 
 function createCustomerTable(invoiceData) {
@@ -105,7 +422,6 @@ function createCustomerTable(invoiceData) {
     var tableHeader = document.createElement('thead');
     var tableBody = document.createElement('tbody');
     table.id = "myCustomerTable";
-
     var hRow0 = tableHeader.insertRow(0);    
     var hRow1 = tableHeader.insertRow(1);        
     var hCell0 = hRow0.insertCell(0);
@@ -114,8 +430,8 @@ function createCustomerTable(invoiceData) {
     hCell0.colSpan = "2";
     hCell0.rowSpan = "2";
     hCell1.colSpan = 6;
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_F) + "</b>";
-    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
+    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
     for(var i=0; i<6; i++) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
@@ -128,7 +444,7 @@ function createCustomerTable(invoiceData) {
     }
     var hCellN = hRow1.insertCell(6);
     hCellN.colSpan = "2";
-    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b> ";
+    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_J) + "</b> ";
 
     var dueDateSelector = createDueDateSelector();
     dueDateSelector.id = "dd_selector";
@@ -165,7 +481,7 @@ function createCustomerTable(invoiceData) {
 	row.appendChild(cellD);
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
-	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_J));
+	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_L));
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
 	previewLink.number = clientCount;
@@ -302,7 +618,7 @@ function createInvoiceTable(invoiceData) {
     var hRow = tableHeader.insertRow(0);    
     var hCell0 = hRow.insertCell(0);
     var hCell1 = hRow.insertCell(1);
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_G) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
     for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -368,7 +684,7 @@ function createEditInvoicesView(invoiceData) {
     fieldset.appendChild(acceptButton);
     fieldset.appendChild(cancelButton);
     fieldset.appendChild(document.createElement('br'));
-    fieldset.id= "myDiv1";
+    fieldset.id= "myDiv2";
     if(!havePrivilige(invoiceData.priviliges, "invoice-edit")) {
 	acceptButton.disabled = true;
 	alert(uiText(UI_TEXT_ALERT_A));
@@ -446,12 +762,12 @@ function createInvoiceEditTableRow(count, invoiceData, invoice, lastRow) {
 }
 
 function deleteInvoiceFromList(invoiceData, button) {
-    newInvoices = invoiceData.invoices.map(function(a,b) {
+    var newInvoices = invoiceData.invoices.map(function(a,b) {
 	if(b != (button.id - 1)) { return a; }
     }).filter(function(s){ return s; });
     invoiceData.invoices = newInvoices;
     document.body.replaceChild(createEditInvoicesView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
 
@@ -461,10 +777,9 @@ function createInvoiceToList(invoiceData, button) {
 		       vat : document.getElementById("ti_" + button.id + "_vat").value };
     invoiceData.invoices.push(newInvoice);
     document.body.replaceChild(createEditInvoicesView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
-
 
 function createEmailText(invoiceData) {
     var table = document.createElement('table');
@@ -478,7 +793,7 @@ function createEmailText(invoiceData) {
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
+    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_K) + "</b>";
     var row = document.createElement('tr');
     var cell1 = document.createElement('td');
     cell1.appendChild(textArea);
@@ -532,7 +847,7 @@ function createEditCustomersView(invoiceData) {
     fieldset.appendChild(acceptButton);
     fieldset.appendChild(cancelButton);
     fieldset.appendChild(document.createElement('br'));
-    fieldset.id= "myDiv1";
+    fieldset.id= "myDiv2";
     if(!havePrivilige(invoiceData.priviliges, "customer-edit")) {
 	acceptButton.disabled = true;
 	alert(uiText(UI_TEXT_ALERT_A));
@@ -637,12 +952,12 @@ function getSelectedTeam(id) {
 }
 
 function deleteCustomerFromList(invoiceData, button) {
-    newCustomers = invoiceData.customers.map(function(a,b) {
+    var newCustomers = invoiceData.customers.map(function(a,b) {
 	if(b != (button.id - 1)) { return a; }
     }).filter(function(s){ return s; });
     invoiceData.customers = newCustomers;
     document.body.replaceChild(createEditCustomersView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
 
@@ -655,7 +970,7 @@ function createCustomerToList(invoiceData, button) {
 			team : getSelectedTeam("ta_" + button.id + "_teamSelector") };
     invoiceData.customers.push(newCustomer);
     document.body.replaceChild(createEditCustomersView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
 
@@ -663,9 +978,9 @@ function createInvoiceButtons(invoiceData) {
     var fieldset = document.createElement('fieldsetset');
     var editCustomersButton = document.createElement('button');
     var editInvoicessButton = document.createElement('button');
-    editCustomersButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_B)));
+    editCustomersButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_D)));
     editCustomersButton.onclick = function() { editCustomers(invoiceData); }
-    editInvoicessButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_C)));
+    editInvoicessButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_E)));
     editInvoicessButton.onclick = function() { editInvoicess(invoiceData); }
     fieldset.appendChild(editCustomersButton);
     fieldset.appendChild(editInvoicessButton);
@@ -674,27 +989,27 @@ function createInvoiceButtons(invoiceData) {
 
 function createSendButton(invoiceData) {
     var sendEmailButton = document.createElement('button');
-    sendEmailButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_D)));
+    sendEmailButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_F)));
     sendEmailButton.onclick = function() { sendAllEmails(invoiceData); }
     return sendEmailButton;
 }
 
 function createDownloadButton(invoiceData) {
     var downloadButton = document.createElement('button');
-    downloadButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_E)));
+    downloadButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_G)));
     downloadButton.onclick = function() { downloadInvoices(invoiceData); }
     return downloadButton;
 }
 
 function editCustomers(invoiceData) {
     document.body.replaceChild(createEditCustomersView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
 
 function editInvoicess(invoiceData) {
     document.body.replaceChild(createEditInvoicesView(invoiceData),
-			       document.getElementById("myDiv1"));
+			       document.getElementById("myDiv2"));
     return false;
 }
 
@@ -883,48 +1198,48 @@ function createLoginView() {
     tBody.appendChild(bRow5);
 
     table.appendChild(tBody);
-    table.id = "myDiv1";
+    table.id = "myDiv2";
 
     return table;
 }
 
 function createLoginHelpText() {
     var helpTextBox = document.createElement("fieldset");
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_LOGIN_A))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_LOGIN_A)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_LOGIN_B))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_LOGIN_B)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_LOGIN_C))))
-    helpTextBox.id = "myHelpText";
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_LOGIN_C)))
+    helpTextBox.id = "myDiv3";
 
     return helpTextBox;
 }
 
 function createEmailHelpText() {
     var helpTextBox = document.createElement("fieldset");
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_EMAIL_A))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_EMAIL_A)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_EMAIL_B))))
-    helpTextBox.id = "myHelpText";
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_EMAIL_B)))
+    helpTextBox.id = "myDiv3";
     return helpTextBox;
 }
 
 function createUserHelpText() {
     var helpTextBox = document.createElement("fieldset");
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_USER_A))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_USER_A)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_USER_B))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_USER_B)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_USER_C))))
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_USER_C)))
     helpTextBox.appendChild(document.createElement("br"));
     helpTextBox.appendChild(document.createElement("br"));
-    helpTextBox.appendChild(document.createTextNode(decodeURIComponent(escape(HELPTEXT_USER_D))))
-    helpTextBox.id = "myHelpText";
+    helpTextBox.appendChild(document.createTextNode(uiText(HELPTEXT_USER_D)))
+    helpTextBox.id = "myDiv3";
 
     return helpTextBox;
 }
@@ -1008,7 +1323,7 @@ function createEmailView() {
     tBody.appendChild(bRow6);
 
     table.appendChild(tBody);
-    table.id= "myDiv1";
+    table.id= "myDiv2";
 
     return table;
 }
@@ -1172,37 +1487,74 @@ function createNewAccountView(account) {
     tBody.appendChild(bRow9);
 
     table.appendChild(tBody);
-    table.id= "myDiv1";
+    table.id= "myDiv2";
 
     return table;
 }
 
-function createLogoutButton() {
-    var button = document.createElement("button");  
-    button.onclick = function() { logout(); }
-    var text = document.createTextNode(uiText(UI_TEXT_MAIN_A));
-    button.appendChild(text);
-    button.id = "myLogoutButton";
-    return button;
+function createTopButtons(mode, invoiceData) {
+    var buttonBox = document.createElement("fieldset");
+    buttonBox.id = "myDiv1";
+    var logoutButton = document.createElement("button");  
+    logoutButton.onclick = function() { logout(); }
+    var text1 = document.createTextNode(uiText(UI_TEXT_MAIN_A));
+    logoutButton.appendChild(text1);
+    buttonBox.appendChild(logoutButton);
+    if(mode.type === "unpriviliged") {
+	return buttonBox;
+    }
+    if(mode.type === "user") {
+	if(havePrivilige(invoiceData.priviliges, "system-admin")) {
+	    var adminButton = document.createElement("button");
+	    adminButton.onclick = function() { gainSysadminMode(); }
+	    var text2 = document.createTextNode(uiText(UI_TEXT_MAIN_B));
+	    adminButton.appendChild(text2);
+	    buttonBox.appendChild(adminButton);
+	}
+    }
+    if(mode.type === "admin") {
+	var adminButton = document.createElement("button");
+	adminButton.onclick = function() { gainUserMode(); }
+	var text2 = document.createTextNode(uiText(UI_TEXT_MAIN_C));
+	adminButton.appendChild(text2);
+	buttonBox.appendChild(adminButton);
+    }
+    return buttonBox;
 }
 
 function logout() {
     div1 = document.createElement("div");
-    document.body.replaceChild(div1, document.getElementById("myLogoutButton"));
-    div1.id = "myLogoutButton";
+    document.body.replaceChild(div1, document.getElementById("myDiv1"));
+    div1.id = "myDiv1";
     div2 = document.createElement("div");
-    document.body.replaceChild(div2, document.getElementById("myDiv1"));
-    div2.id = "myDiv1";
+    document.body.replaceChild(div2, document.getElementById("myDiv2"));
+    div2.id = "myDiv2";
 
     var sendable = {type:"clientStarted", content:"none"};
     mySocket.send(JSON.stringify(sendable));
     document.getElementById("myStatusField").value = "started";
 }
 
+function gainSysadminMode() {
+    div1 = document.createElement("div");
+    document.body.replaceChild(div1, document.getElementById("myDiv1"));
+    div1.id = "myDiv1";
+    div2 = document.createElement("div");
+    document.body.replaceChild(div2, document.getElementById("myDiv2"));
+    div2.id = "myDiv2";
+
+    sendToServerEncrypted("adminMode", "none");
+    document.getElementById("myStatusField").value = "started";
+}
+
+function gainUserMode() {
+    sendToServerEncrypted("resetToMain", {});
+}
+
 function sendLogin(username, password) {
     div = document.createElement('div');
-    div.id = "myDiv1";
-    document.body.replaceChild(div, document.getElementById("myDiv1"));
+    div.id = "myDiv2";
+    document.body.replaceChild(div, document.getElementById("myDiv2"));
     sessionPassword = Sha1.hash(password + Sha1.hash(username).slice(0,4));
     sendToServer("userLogin", { username: Sha1.hash(username) });
 }
@@ -1213,9 +1565,9 @@ function setElementStyle(element) {
 }
 
 function createAccountQuery() {
-    document.body.replaceChild(createEmailView(), document.getElementById("myDiv1"));
+    document.body.replaceChild(createEmailView(), document.getElementById("myDiv2"));
     document.getElementById("myStatusField").value = "Creating/Reseting account";
-    document.body.replaceChild(createEmailHelpText(), document.getElementById("myHelpText"));
+    document.body.replaceChild(createEmailHelpText(), document.getElementById("myDiv3"));
 }
 
 function checkEmailValidity(address) {
@@ -1234,17 +1586,17 @@ function checkUsernameValidity(name) {
 function sendConfirmAccount(account) {
     if(!checkEmailValidity(account.email)) {
 	document.getElementById("myStatusField").value = "Illegal email address";
-	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv1"));
+	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv2"));
 	return;
     }
     if(!checkUsernameValidity(account.username)) {
 	document.getElementById("myStatusField").value = "Illegal username";
-	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv1"));
+	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv2"));
 	return;
     }
     if(account.passwd1 !== account.passwd2) {
 	document.getElementById("myStatusField").value = "Passwords do not match";
-	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv1"));
+	document.body.replaceChild(createNewAccountView(), document.getElementById("myDiv2"));
 	return;
     }
     var sendable = { username: account.username,
@@ -1254,15 +1606,15 @@ function sendConfirmAccount(account) {
 		     password: Sha1.hash(account.passwd1 + Sha1.hash(account.username).slice(0,4)) }; 
     document.getElementById("myStatusField").value = "Account query sent";
     div = document.createElement('div');
-    div.id = "myDiv1";
-    document.body.replaceChild(div, document.getElementById("myDiv1"));
+    div.id = "myDiv2";
+    document.body.replaceChild(div, document.getElementById("myDiv2"));
     sendToServerEncrypted("createAccount", sendable);
 }
 
 function sendConfirmationEmail(email) {
     if(!checkEmailValidity(email)) {
 	document.getElementById("myStatusField").value = "Illegal email address";
-	document.body.replaceChild(createEmailView(), document.getElementById("myDiv1"));
+	document.body.replaceChild(createEmailView(), document.getElementById("myDiv2"));
 	return;
     }
     sendToServer("confirmEmail", email);
