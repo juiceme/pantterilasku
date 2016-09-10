@@ -111,11 +111,56 @@ function createUserView(invoiceData) {
 
 function createAdminView(adminData) {
     var fieldset = document.createElement('fieldsetset');
+    var acceptButton = document.createElement('button');
+    var cancelButton = document.createElement('button');
     fieldset.appendChild(createUserTable(adminData));
     fieldset.appendChild(document.createElement('br'));
     fieldset.appendChild(createCompanyTable(adminData));
+    fieldset.appendChild(document.createElement('br'));
+    acceptButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_G)));
+    acceptButton.onclick = function() { saveAdminEdit(adminData); }
+    cancelButton.appendChild(document.createTextNode(uiText(UI_TEXT_EDIT_INVOICE_H)));
+    cancelButton.onclick = function() { cancelAdminEdit(adminData); }
+    fieldset.appendChild(acceptButton);
+    fieldset.appendChild(cancelButton);
+    fieldset.appendChild(document.createElement('br'));
     fieldset.id= "myDiv2";
     return fieldset;
+}
+
+function saveAdminEdit(adminData) {
+    var count = 1;
+    adminData.users.forEach(function(u) {
+	var priviliges = [];
+	if(document.getElementById("cbu_" + count + "_view").checked) { priviliges.push("view"); }
+	if(document.getElementById("cbu_" + count + "_customer-edit").checked) { priviliges.push("customer-edit"); }
+	if(document.getElementById("cbu_" + count + "_invoice-edit").checked) { priviliges.push("invoice-edit"); }
+	if(document.getElementById("cbu_" + count + "_email-send").checked) { priviliges.push("email-send"); }
+	if(document.getElementById("cbu_" + count + "_system-admin").checked) { priviliges.push("system-admin"); }
+
+	u.realname = document.getElementById("tu_" + count + "_realname").value;
+	u.email = document.getElementById("tu_" + count + "_email").value;
+	u.phone = document.getElementById("tu_" + count + "_phone").value;
+	u.applicationData = { priviliges: priviliges,
+			      teams: document.getElementById("tu_" + count + "_teams").value.split(",") };
+	count++;
+    });
+
+    var count = 1;
+    adminData.companies.forEach(function(c) {
+	c.name = document.getElementById("tc_" + count + "_name").value;
+	c.address = document.getElementById("tc_" + count + "_address").value;
+	c.bankName = document.getElementById("tc_" + count + "_bankName").value;
+	c.iban = document.getElementById("tc_" + count + "_iban").value;
+	c.bic = document.getElementById("tc_" + count + "_bic").value;
+	count++;
+    });
+
+    sendToServerEncrypted("saveAdminData", adminData);
+}
+
+function cancelAdminEdit(adminData) {
+    sendToServerEncrypted("resetToMain", {});
 }
 
 function createUserTable(adminData) {
@@ -134,7 +179,7 @@ function createUserTable(adminData) {
     hCell1.innerHTML = "<b>realname</b>";
     hCell2.innerHTML = "<b>email</b>";
     hCell3.innerHTML = "<b>phone</b>";
-    hCell4.innerHTML = "<b>V / C / E / P</b>";
+    hCell4.innerHTML = "<b>V / C / I / E / A</b>";
     hCell5.innerHTML = "<b>teams</b>";
     count=1;
     adminData.users.forEach(function(u) {
@@ -340,22 +385,32 @@ function createUserEditTableRow(count, adminData, user, lastRow) {
     checkBox1.type = "checkbox";
     checkBox1.id = "cbu_" + count + "_view";
     checkBox1.checked = havePrivilige(user.applicationData.priviliges, "view");
+    checkBox1.title = "view";
     cell4.appendChild(checkBox1);
     var checkBox2 = document.createElement('input');
     checkBox2.type = "checkbox";
     checkBox2.id = "cbu_" + count + "_customer-edit";
     checkBox2.checked = havePrivilige(user.applicationData.priviliges, "customer-edit");
+    checkBox2.title = "customer-edit";
     cell4.appendChild(checkBox2);
     var checkBox3 = document.createElement('input');
     checkBox3.type = "checkbox";
     checkBox3.id = "cbu_" + count + "_invoice-edit";
     checkBox3.checked = havePrivilige(user.applicationData.priviliges, "invoice-edit");
+    checkBox3.title = "invoice-edit";
     cell4.appendChild(checkBox3);
     var checkBox4 = document.createElement('input');
     checkBox4.type = "checkbox";
     checkBox4.id = "cbu_" + count + "_email-send";
     checkBox4.checked = havePrivilige(user.applicationData.priviliges, "email-send");
+    checkBox4.title = "email-send";
     cell4.appendChild(checkBox4);
+    var checkBox5 = document.createElement('input');
+    checkBox5.type = "checkbox";
+    checkBox5.id = "cbu_" + count + "_system-admin";
+    checkBox5.checked = havePrivilige(user.applicationData.priviliges, "system-admin");
+    checkBox5.title = "system-admin";
+    cell4.appendChild(checkBox5);
     row.appendChild(cell4);
 
     var cell5 = document.createElement('td');
@@ -392,6 +447,7 @@ function createUserToList(adminData, button) {
     if(document.getElementById("cbu_" + button.id + "_customer-edit").checked) { priviliges.push("customer-edit"); }
     if(document.getElementById("cbu_" + button.id + "_invoice-edit").checked) { priviliges.push("invoice-edit"); }
     if(document.getElementById("cbu_" + button.id + "_email-send").checked) { priviliges.push("email-send"); }
+    if(document.getElementById("cbu_" + button.id + "_system-admin").checked) { priviliges.push("system-admin"); }
 
     var newUser = { username: document.getElementById("tu_" + button.id + "_username").value,
 		    realname: document.getElementById("tu_" + button.id + "_realname").value,

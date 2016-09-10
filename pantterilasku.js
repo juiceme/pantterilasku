@@ -189,6 +189,8 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processSaveInvoiceList(cookie, content); }
 	    if((type === "adminMode") &&
 	       stateIs(cookie, "loggedIn")) { processAdminMode(cookie, content); }
+	    if((type === "saveAdminData") &&
+	       stateIs(cookie, "loggedIn")) { processSaveAdminData(cookie, content); }
 	}
     });
 
@@ -308,6 +310,24 @@ function processSaveInvoiceList(cookie, content) {
 	cookie.invoiceData = createUserInvoiceData(cookie.user);
     } else {
 	servicelog("user has insufficent priviliges to edit invoice tables");
+    }
+    sendable = { type: "invoiceData", content: cookie.invoiceData };
+    sendCipherTextToClient(cookie, sendable);
+    servicelog("Sent invoiceData to client #" + cookie.count);
+}
+
+function processSaveAdminData(cookie, content) {
+    var sendable;
+    var adminData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requests admin data saving: " + JSON.stringify(adminData));
+    if(userHasSysAdminPrivilige(cookie.user)) {
+	updateAdminDataFromClient(cookie, adminData);
+	servicelog("********" + JSON.stringify(cookie.user));
+	cookie.user = getUserByUserName(cookie.user.username)[0];
+	servicelog("********" + JSON.stringify(cookie.user));
+	cookie.invoiceData = createUserInvoiceData(cookie.user);
+    } else {
+	servicelog("user has insufficent priviliges to edit admin data");
     }
     sendable = { type: "invoiceData", content: cookie.invoiceData };
     sendCipherTextToClient(cookie, sendable);
@@ -626,6 +646,19 @@ function updateInvoicesFromClient(cookie, invoices) {
 	servicelog("Invoice database write failed");
     } else {
 	servicelog("Updated Invoice database: " + JSON.stringify(newInvoiceData));
+    }
+}
+
+function updateAdminDataFromClient(cookie, adminData) {
+    if(datastorage.write("users", { users: adminData.users }) === false) {
+	servicelog("User database write failed");
+    } else {
+	servicelog("Updated User database: " + JSON.stringify(adminData.users));
+    }
+    if(datastorage.write("company", { company: adminData.companies }) === false) {
+	servicelog("Company database write failed");
+    } else {
+	servicelog("Updated Company database: " + JSON.stringify(adminData.companies));
     }
 }
 
