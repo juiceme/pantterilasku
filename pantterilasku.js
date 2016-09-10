@@ -162,7 +162,7 @@ wsServer.on('request', function(request) {
 		return;
 	    }
 
-	    servicelog("Incoming message: " + JSON.stringify(receivable));
+//	    servicelog("Incoming message: " + JSON.stringify(receivable));
 	    var type = receivable.type;
 	    var content = receivable.content;
 
@@ -322,9 +322,7 @@ function processSaveAdminData(cookie, content) {
     servicelog("Client #" + cookie.count + " requests admin data saving: " + JSON.stringify(adminData));
     if(userHasSysAdminPrivilige(cookie.user)) {
 	updateAdminDataFromClient(cookie, adminData);
-	servicelog("********" + JSON.stringify(cookie.user));
 	cookie.user = getUserByUserName(cookie.user.username)[0];
-	servicelog("********" + JSON.stringify(cookie.user));
 	cookie.invoiceData = createUserInvoiceData(cookie.user);
     } else {
 	servicelog("user has insufficent priviliges to edit admin data");
