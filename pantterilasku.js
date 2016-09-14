@@ -90,6 +90,7 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_MAIN_J", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_K", language) + "\n" +
 	printLanguageVariable("UI_TEXT_MAIN_L", language) + "\n" +
+	printLanguageVariable("UI_TEXT_MAIN_M", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
 	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
@@ -191,6 +192,8 @@ wsServer.on('request', function(request) {
 	       stateIs(cookie, "loggedIn")) { processAdminMode(cookie, content); }
 	    if((type === "saveAdminData") &&
 	       stateIs(cookie, "loggedIn")) { processSaveAdminData(cookie, content); }
+	    if((type === "helpScreen") &&
+	       stateIs(cookie, "loggedIn")) { processHelpScreen(cookie, content); }
 	}
     });
 
@@ -373,6 +376,10 @@ function processAdminMode(cookie, content) {
 	servicelog("user " + cookie.user.username + " does not have Sytem Administration priviliges!");
 	processClientStarted(cookie);
     }	
+}
+
+function processHelpScreen(cookie, content) {
+    servicelog("Client #" + cookie.count + " requests help screen");
 }
 
 function printPreview(callback, cookie, previewData)

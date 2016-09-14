@@ -486,8 +486,8 @@ function createCustomerTable(invoiceData) {
     hCell0.colSpan = "2";
     hCell0.rowSpan = "2";
     hCell1.colSpan = 6;
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_H) + "</b>";
-    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
+    hCell1.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_J) + "</b>";
     for(var i=0; i<6; i++) {
 	var hCellN = hRow1.insertCell(i);
 	hCellN.innerHTML = "<b>" + (i+1) + "</b>";
@@ -500,7 +500,7 @@ function createCustomerTable(invoiceData) {
     }
     var hCellN = hRow1.insertCell(6);
     hCellN.colSpan = "2";
-    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_J) + "</b> ";
+    hCellN.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_K) + "</b> ";
 
     var dueDateSelector = createDueDateSelector();
     dueDateSelector.id = "dd_selector";
@@ -537,7 +537,7 @@ function createCustomerTable(invoiceData) {
 	row.appendChild(cellD);
 	var cellP = document.createElement('td');
 	var previewLink = document.createElement('a');
-	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_L));
+	var previewText = document.createTextNode(uiText(UI_TEXT_MAIN_M));
 	previewLink.appendChild(previewText);
 	previewLink.id = "pl_" + clientCount;
 	previewLink.number = clientCount;
@@ -674,7 +674,7 @@ function createInvoiceTable(invoiceData) {
     var hRow = tableHeader.insertRow(0);    
     var hCell0 = hRow.insertCell(0);
     var hCell1 = hRow.insertCell(1);
-    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_I) + "</b>";
+    hCell0.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_J) + "</b>";
     for(var i=0; i<6; i++) {
 	var row = document.createElement('tr');
 	var cell0 = document.createElement('td');
@@ -849,7 +849,7 @@ function createEmailText(invoiceData) {
 
     var hRow = tableHeader.insertRow(0);    
     var hCell = hRow.insertCell(0);
-    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_K) + "</b>";
+    hCell.innerHTML = "<b>" + uiText(UI_TEXT_MAIN_L) + "</b>";
     var row = document.createElement('tr');
     var cell1 = document.createElement('td');
     cell1.appendChild(textArea);
@@ -1034,9 +1034,9 @@ function createInvoiceButtons(invoiceData) {
     var fieldset = document.createElement('fieldsetset');
     var editCustomersButton = document.createElement('button');
     var editInvoicessButton = document.createElement('button');
-    editCustomersButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_D)));
+    editCustomersButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_E)));
     editCustomersButton.onclick = function() { editCustomers(invoiceData); }
-    editInvoicessButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_E)));
+    editInvoicessButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_F)));
     editInvoicessButton.onclick = function() { editInvoicess(invoiceData); }
     fieldset.appendChild(editCustomersButton);
     fieldset.appendChild(editInvoicessButton);
@@ -1045,14 +1045,14 @@ function createInvoiceButtons(invoiceData) {
 
 function createSendButton(invoiceData) {
     var sendEmailButton = document.createElement('button');
-    sendEmailButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_F)));
+    sendEmailButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_G)));
     sendEmailButton.onclick = function() { sendAllEmails(invoiceData); }
     return sendEmailButton;
 }
 
 function createDownloadButton(invoiceData) {
     var downloadButton = document.createElement('button');
-    downloadButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_G)));
+    downloadButton.appendChild(document.createTextNode(uiText(UI_TEXT_MAIN_H)));
     downloadButton.onclick = function() { downloadInvoices(invoiceData); }
     return downloadButton;
 }
@@ -1575,6 +1575,11 @@ function createTopButtons(mode, invoiceData) {
 	adminButton.appendChild(text2);
 	buttonBox.appendChild(adminButton);
     }
+    var helpButton = document.createElement("button");
+    helpButton.onclick = function() { pushHelpScreenToClient(); }
+    var text3 = document.createTextNode(uiText(UI_TEXT_MAIN_D));
+    helpButton.appendChild(text3);
+    buttonBox.appendChild(helpButton);
     return buttonBox;
 }
 
@@ -1601,6 +1606,10 @@ function gainSysadminMode() {
 
     sendToServerEncrypted("adminMode", "none");
     document.getElementById("myStatusField").value = "started";
+}
+
+function pushHelpScreenToClient() {
+    sendToServerEncrypted("helpScreen", "none");
 }
 
 function gainUserMode() {
