@@ -70,6 +70,13 @@ mySocket.onmessage = function (event) {
 	var zipData = atob(JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128)));
 	window.open("data:application/zip," + escape(zipData));
     }
+
+    if(receivable.type == "helpText") {
+	var helpText = atob(JSON.parse(Aes.Ctr.decrypt(receivable.content, sessionPassword, 128)));
+	var wnd = window.document.open("about:blank", "", "scrollbars=yes");
+	wnd.document.write(decodeURIComponent(escape(helpText)));
+	wnd.document.close();
+    }
 }
 
 
@@ -1576,7 +1583,7 @@ function createTopButtons(mode, invoiceData) {
 	buttonBox.appendChild(adminButton);
     }
     var helpButton = document.createElement("button");
-    helpButton.onclick = function() { pushHelpScreenToClient(); }
+    helpButton.onclick = function() { pushHelpScreenToClient(mode.type); }
     var text3 = document.createTextNode(uiText(UI_TEXT_MAIN_D));
     helpButton.appendChild(text3);
     buttonBox.appendChild(helpButton);
@@ -1608,8 +1615,8 @@ function gainSysadminMode() {
     document.getElementById("myStatusField").value = "started";
 }
 
-function pushHelpScreenToClient() {
-    sendToServerEncrypted("helpScreen", "none");
+function pushHelpScreenToClient(mode) {
+    sendToServerEncrypted("helpScreen", { mode: mode });
 }
 
 function gainUserMode() {

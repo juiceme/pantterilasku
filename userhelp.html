@@ -1,0 +1,42 @@
+<h1>Pantterilaskun Käyttöohje</h1>
+<br><h2>Käyttöliittymän rakenne</h2>
+Käyttöliittymän päänäkymässä on kaksi listamuotoista isoa valikkoa; <b>"Asiakkaat"</b>, <b>"Laskut"</b> ja tekstinsyöttökenttä <b>"Sähköpostin Teksti"</b>.
+<br>
+<br>Ylimmäisessä <b>"Asiakkaat"</b> valikossa on lista joukkueen jäsenistä siten, että jokaisen nimen perässä on aktivointi 1-6 laskutettavalle tuotteelle ja viimeisenä eräpäivälaatikko. Valikon otsikkorivillä on tehovalitsimet jotka vaikuttavat kaikkiin joukkueen jäseniin samalla kertaa.
+<br>Jokaisen valintalaatikon perässä on lukumäärän pudotusvalikko joka aktivoituu kun kyseinen valintalaatikko aktovoidaan. Lukumäärän pudotusvalikosta valitaan montako kappaletta laskutettavaa tuotetta on, esimerkiksi "2 t-paitaa".
+<br>Valintalaatikko ja lukumäärävalikko:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp<input type="checkbox"> <select><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option></select>
+<br>
+<br>Alemmassa <b>"Laskut"</b> valikossa on laskutettavat tuotteet, joita siis voi kerrallaan valita käyttöön yhdelle laskulle 1-6 kappaletta.
+<br>
+<br>Laskuja suunnitellessa kannattaa valita ensin alemmasta <b>"Laskut"</b> valikosta laskutettavat tuotteet; esimerkiksi mikäli haluat laskulle "Panthers jäsenmaksun" joka tulee kaikille joukkueen jäsenille kannattaa valita se ylimmästä pudotusvalikosta ja napsauttaa sitten <b>"Asiakkaat"</b> kentästä ensimmäistä tehovalitsinta. Tällöin kaikki ensimmäisen rivin valintalaatikot aktovoituvat.
+<br>Mikäli haluat laskuttaa joitain tuotteita vain osalta joukkueen jäsenistä, valitse vain kyseessäolevien asiakkaiden kohdalta valintalaatikot.
+<br>
+<br><h2>Esikatselu</h2>
+Kun olet valinnut <b>"Asiakkaat"</b> taulukosta yhden tai useamman laskutettavan tuotteen asiakkaille, kunkin valitun rivin perään aktivoituu esikatselulinkki: <a href="#">Esikatselu PDF</a>
+<br>Esikatselulinkkiä klikkaamalla aukeaa uusi selaimen välilehti johon generoituu yksi PDF-muotoinen lasku kyseiselle henkilölle. Mikäli selaimessasi ei ole sallittu uusien välilehtien avaamista, saat todennäköisesti huomautuksen tästä ja mahdollisuuden hyväksyä uusi aukeava välilehti.
+<br>Tämä lasku on täsmälleen samannäkoinen kun lopullinen sähköpostilla lähetettävä lasku.
+<br><i>HUOM! näyttää siltä että Microsoft Edge -selain ei tue tätä ominaisuutta, tämä on testattu toimivaksi Firefoxilla ja Chromella</i>
+<br>
+<br><h2>Tulostaminen</h2>
+Kun olet valinnut henkilöt joille haluat lähettää laskut, täytä vielä <b>"Sähköpostin Teksti"</b> -kenttään haluamasi saateteksti joka lähetetään sähköpostilla kaikille laskutettaville henkilöille ja paina nappia <button type="button">Lähetä Laskut Sähköpostilla!</button>
+<br>Tällöin kullekin asiakkaalle lähetetään yksilöllinen PDF-muotoinen lasku sähköpostin liitteenä, täsmälleen samnlaisena kuin esikatelussa näytetty PDF-dokumentti.
+<br>Kun laskut on lähetetty, aukeaa selaimeen talletettavaksi tai katseltavaksi zipppitiedosto jossa on sinulle kopiot kaikista lähetetyistä laskuista.
+<br>
+<br><h2>Laskujen lataaminen zippinä</h2>
+Mikäli et halua lähettää laskuja sähköpostilla vaan esimerkiksi tulostaa ne paperisena ja antaa suoraan käteen tai lähettää kirjeenä, saat tämän tehtyä painamalla nappia <button type="button">Lataa Laskut Zippitiedostona!</button>
+<br>Tällöin aukeaa selaimeen sama zipppitiedosto kuin sähköpostia lähetettäessäkin, kuitenkin niin että mitään maileja ei lähetetä.
+<br>
+<br><h2>Joukkueen jäsenten muokkaaminen</h2>
+Pääset muokkaamaan joukkueen jäsenten tietoja klikkaamalla nappia <button type="button">Muokaa Joukkuetta!</button>
+<br>Tällöin aukeaa uusi sivu jossa kukin asiakas on muokattavissa omalla rivillään. Välttämättömiä tietokenttiä jokaisen asiakkaan kohdalla ovat <b>"Nimi"</b>,  <b>"Sähköposti"</b> ja <b>"Viitenumero"</b>
+<br>Halutessasi voit lisätä myös <b>"Osoite"</b> ja <b>"Lisätieto"</b> kentät jotka tulostetaan asiakkaan laskulle, lisätieto on pelaajan kutsumanimeä ja pelinumeroa varten.
+<br>Voit poistaa pelaajan listalta painamalla rivin perässä olevaa <button type="button">Poista</button> -nappia. Vastaavasti voit lisätä pelaajia joukkueeseesi täyttämällä alimmaisen rivin tiedot ja painamalla rivin perässä olevaa <button type="button">Luo Uusi</button> -nappia.
+<br>Kaikki kenttiin tekemäsi muutokset tallettuvat kerralla painaessasi <button type="button">Talleta!</button> -nappia. Mikäli haluat postua valikosta pääsivulle tallettamatta mitään paina <button type="button">Peruuta!</button>
+<br>
+<br><h2>Laskutettavien tuotteiden muokkaaminen</h2>
+Pääset muokkaamaan laskutettavien tuotteiden listaa klikkaamalla nappia <button type="button">Muokkaa Laskuja!</button>
+<br>Tällöin aukeaa uusi sivu jossa kukin tuote on muokattavissa omalla rivillään.
+<br>Kaikki kentät; <b>"Tuotteen Kuvaus"</b>, <b>"Yksikköhinta"</b> ja <b>"ALV-%"</b> täytyy täyttää. Hinnat ovat perushintoja joihin lisätään liikevaihtovero ja mikäli tuote on liikevaihtoveroton kuten esim. jäsenmaksut, täytetään <b>"ALV-%"</b> kenttään numero 0.
+<br>Voit poistaa tuotteen listalta painamalla rivin perässä olevaa <button type="button">Poista</button> -nappia. Vastaavasti voit lisätä uusia tuotteita täyttämällä alimmaisen rivin tiedot ja painamalla rivin perässä olevaa <button type="button">Luo Uusi</button> -nappia.
+<br>Kaikki kenttiin tekemäsi muutokset tallettuvat kerralla painaessasi <button type="button">Talleta!</button> -nappia. Mikäli haluat postua valikosta pääsivulle tallettamatta mitään paina <button type="button">Peruuta!</button>
+<br>

@@ -379,7 +379,17 @@ function processAdminMode(cookie, content) {
 }
 
 function processHelpScreen(cookie, content) {
-    servicelog("Client #" + cookie.count + " requests help screen");
+    var content = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
+    servicelog("Client #" + cookie.count + " requests help screen (mode : " + JSON.stringify(content) + " )");
+    if(content.mode === "user") {
+	sendable = { type: "helpText",
+		     content: fs.readFileSync("./userhelp.html").toString("base64") };
+	sendCipherTextToClient(cookie, sendable);
+    } else {
+	sendable = { type: "helpText",
+		     content: fs.readFileSync("./adminhelp.html").toString("base64") };
+	sendCipherTextToClient(cookie, sendable);
+    }
 }
 
 function printPreview(callback, cookie, previewData)
