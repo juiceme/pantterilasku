@@ -1,1 +1,40 @@
 <h1>User Manual for Pantterilasku</h1>
+<br><h2>User Interface description</h2>
+The main UI screen has two large tables; <b>"customer"</b>, <b>"Invoices"</b> and a text-input field <b>"Email Text"</b>.
+<br>
+<br>The upper <b>"customer"</b> table has a list of team members so that each member has an activation checkbox for 1 to 6 invoice items and a dropdown box for due date as the last item. On the header row of the table there are power selectors that affect the checkboxes on all rows below.
+<br>After each selection checkbox there is an item count dropdown box that activates when the said selection ox is checked. The item count selector defines how many of the said invoice items are to be billed, for example "2 t-shirts".
+<br>Selection checkbox and item count dropdown:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp<input type="checkbox"> <select><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option></select>
+<br>
+<br>The lower <b>"Invoices"</b> table defines the invoice tiems that can be selected for each customer. For each billing session you can select 1 to 6 items, in any mix to the customers.
+<br>
+<br>When you start planning invoices, it is best to first select from the <b>"Invoices"</b> table such items that are to be billed from all the customers you want to send bills to, if such items exist; for example team membership fees. That kind of item should be selected in the uppermost invoice table row. After that when you click the first power selection box in the <b>"customer"</b> table all customers will have this item on their invoice.
+<br>If you only want to bill some items from a subset of the team members, only select the checkboxes of those customers from each cloumn.
+<br>
+<br><h2>Preview of invoices</h2>
+When you have selected one or more billable items for a customer in the <b>"customer"</b> table, on each row that has selections will have an activated preview link in the end: <a href="#">Preview PDF</a>
+<br>By clicking the preview link a new tab will open in your browser where an exact preview copy of the to-be-sent invoice is generated in PDF format. If your browser settings prevent opening new tabs, you will probably get a notification popup saying so.
+<br><i>NOTE! It is possible that this doesn't work correctly in Microsoft Edge browser. This has been tested to work only in Firefox and Chrome browsers.</i>
+<br>
+<br><h2>Emailing the invoices</h2>
+When you have selected the recipients and prepared bill items, you need to fill in the <b>"Email Text"</b> field with the message you want to have in the email body. When you click the button <button type="button">Send All Emails</button>
+all customers are sent an email which has their personal invoice PDF attached.
+<br>When the invoices have been sent, a zipfile containing all the invoices is uploaded to your browser, to be saved or viewed at will.
+<br>
+<br><h2>Downloading the invoices</h2>
+If you do not want to automatically email the invoices but rather print and hand them out directly or send via snailmail, you can download the invoices as zipfile by clicking the button <button type="button">Download Invoice Zipfile!</button>
+<br>The same zipfile that you would get after sending the mails is presented to you, without emailing the invoices.
+<br>
+<br><h2>Modifying team members</h2>
+You can edit the list of your team members by clicking the button <button type="button">Edit Customers</button>
+<br>A new page is opened where you have an edit table of all your team members. There are some mandatory fields: <b>"Name"</b>, <b>"Email"</b> and <b>"Bank Reference"</b>
+<br>If you want to, you can also fill the fields <b>"Address"</b> and <b>"Detail"</b> which will be printed to the customers invoice. The detail field is for players nickname and player number information.
+<br>You can remove a customer by clicking the <button type="button">Delete</button> button at the end of the row. Similarily you can add new customers by filling in the details on the bottom row and clicking the <button type="button">Create New</button> button.
+<br>All modifications to the customer list will be saved only after you click the <button type="button">Save!</button> button. If you want to abandon your changes you will get back to the main screen by clicking the <button type="button">Cancel!</button> button.
+<br>
+<br><h2>Modifying the invoice items</h2>
+You get to the list view where you can modify billable items by clicking the <button type="button">Edit Invoices!</button> button.
+<br>This will open a new window where you can edit each item on an own edit row.
+<br>All the fields <b>"Item Description"</b>, <b>"Price/Each"</b> ja <b>"Vat-%"</b> are mandatory. The prices are without tax, and if the item is non-taxable, like a membership fee for example, you need to fill 0 into the <b>"Vat-%"</b> field.
+<br>You can remove an item from the list by clicking <button type="button">Delete</button> button at the end of the row. Similarily you can create new items by filling in the fields on the bottom row and clicking <button type="button">Create New</button> button.
+<br>All modifications to the invoice list will be saved only after you click the <button type="button">Save!</button> button. If you want to abandon your changes you will get back to the main screen by clicking the <button type="button">Cancel!</button> button.
