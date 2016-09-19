@@ -1,11 +1,15 @@
 var site = window.location.hostname;
 var mySocket = new WebSocket("ws://" + site + ":" + WEBSOCK_PORT + "/");
 var sessionPassword;
+var connectionTimerId;
 
 mySocket.onopen = function (event) {
     var sendable = {type:"clientStarted", content:"none"};
     mySocket.send(JSON.stringify(sendable));
     document.getElementById("myStatusField").value = "started";
+    connectionTimerId = setTimeout(function() { 
+	document.getElementById("myStatusField").value = "No connection to server";
+    }, 2000);
 };
 
 mySocket.onmessage = function (event) {
@@ -20,6 +24,7 @@ mySocket.onmessage = function (event) {
     if(receivable.type == "loginView") {
 	document.body.replaceChild(createLoginView(), document.getElementById("myDiv2"));
 	document.body.replaceChild(createLoginHelpText(), document.getElementById("myDiv3"));
+	clearTimeout(connectionTimerId);
     }
 
     if(receivable.type == "loginChallenge") {
