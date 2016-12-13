@@ -642,12 +642,26 @@ function updateCustomersFromClient(cookie, customers) {
     }
 }
 
+function cleanupNumberInput(input) {
+    var cleanedNumber = input.replace(/,/g , ".").split(".");
+    if(cleanedNumber[1] === undefined) {
+	return cleanedNumber[0];
+    } else {
+	return cleanedNumber[0] + "." + cleanedNumber[1];
+    }
+}
+
 function updateInvoicesFromClient(cookie, invoices) {
     var invoiceData = datastorage.read("invoices");
 
     var checkedInvoices = invoices.map(function(c) {
 	if(c.user === cookie.user.username) { return c; }
     }).filter(function(s){ return s; });
+
+    checkedInvoices.forEach(function(item) {
+	item.price = cleanupNumberInput(item.price);
+	item.vat = cleanupNumberInput(item.vat);
+    });
 
     var newInvoiceData = { invoices: [] };
     invoiceData.invoices.forEach(function(c) {
