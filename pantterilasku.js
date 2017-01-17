@@ -496,7 +496,8 @@ function sendBulkEmail(cookie, invoiceData) {
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
 	var mailDetails = { text: invoiceData.emailText,
-			    from: cookie.user.realname + " <" + cookie.user.email + ">",
+			    from: datastorage.read("email").sender,
+			    "reply-to": cookie.user.realname + " <" + cookie.user.email + ">",
 			    to:  customer.email,
 			    subject: "Uusi lasku " + company.name + " / " + billNumber,
 			    attachment: [ { path: filename,
@@ -992,7 +993,6 @@ function removePendingRequest(cookie, emailAdress) {
 function sendVerificationEmail(cookie, recipientAddress) {
     removePendingRequest(cookie, recipientAddress);
     var pendingData = datastorage.read("pending");
-    var emailData = datastorage.read("email");
     var timeout = new Date();
     var emailToken = generateEmailToken(recipientAddress);
     timeout.setHours(timeout.getHours() + 24);
@@ -1017,7 +1017,7 @@ function sendVerificationEmail(cookie, recipientAddress) {
     }
 
     var mailDetails = { text: emailBody,
-			from: emailData.sender,
+			from: datastorage.read("email").sender,
 			to: recipientAddress,
 			subject: emailSubject };
 
