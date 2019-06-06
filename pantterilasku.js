@@ -5,6 +5,7 @@ var pdfprinter = require("./pdfprinter");
 var path = require("path");
 var datastorage = require('./datastorage/datastorage.js');
 var archiver = require("archiver");
+var util = require('util')
 
 var databaseVersion = 0;
 
@@ -12,8 +13,13 @@ var databaseVersion = 0;
 // Application specific part starts from here
 
 function handleApplicationMessage(cookie, decryptedMessage) {
-    if(decryptedMessage.type === "") {
-	process(cookie, decryptedMessage.content); }
+    
+//    framework.servicelog("Got message: " + JSON.stringify(decryptedMessage));
+
+    if(decryptedMessage.type === "selectorClicked") {
+	processSelectorClicked(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "selectorSelected") {
+	processSelectorSelected(cookie, decryptedMessage.content); }
 
 }
 
@@ -21,7 +27,7 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 // helpers
 
 function getApplicationData(cookie) {
-    return cookie.applicationData;
+    return cookie.user.applicationData;
 }
 
 function getCustomersByCompany(team) {
@@ -31,6 +37,21 @@ function getCustomersByCompany(team) {
     });
     return customers;
 }
+
+function createClickerElement(id, state, value) {
+    return [ framework.createUiCheckBox("tick", state, "tick", true,
+					"sendToServerEncrypted('selectorClicked', { id: " + id + ", state: document.getElementById(this.id).checked } );"),
+	     framework.createUiSelectionList("sel", [1,2,3,4,5,6,7,8,9], value, true, !state, false,
+					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
+}
+
+function createDueDateElement(id, value) {
+    return [ /* framework.createUiHtmlCell("due date", "<b>Eräpäivä</b>"), */
+	framework.createUiTextNode("due date", "Eräpäivä"), 
+	framework.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ], value, true, false, false,
+					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );") ];
+}
+
 
 // Administration UI panel requires application to provide needed priviliges
 
@@ -65,34 +86,40 @@ function createTopButtonList(cookie) {
 function processResetToMainState(cookie, content) {
     // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel" 
     framework.servicelog("User session reset to main state");
+
+//    framework.servicelog("My own cookie is: " + util.inspect(cookie));
+
     cookie.user = datastorage.read("users").users.filter(function(u) {
 	return u.username === cookie.user.username;
     })[0];
     sendCustomersMainData(cookie);
 }
 
+var mainDataVisibilityMap = [];
+var mainDataSelectionMap = [];
+
 function sendCustomersMainData(cookie) {
     var sendable;
     var topButtonList = framework.createTopButtons(cookie, [ { button: { text: "Help",
 									 callbackMessage: "getMainHelp" } } ]);
-
     var customers = []
     getApplicationData(cookie).teams.forEach(function(t) {
-	var customers = customers.concat(getCustomersByCompany(t));
+	customers = customers.concat(getCustomersByCompany(t));
     });
 
-    var items = [];
-    customers.forEach(function(c) {
-	items.push( [ [ framework.createUiTextNode("name", t.name) ],
-		      [ framework.createUiTextNode("team", t.team) ] ] );
-    });
+    if(mainDataVisibilityMap.length === 0) {
+	var count = 0
+	while(count < customers.length * 7 + 7) {
+	    mainDataVisibilityMap.push(false);
+	    mainDataSelectionMap.push(1);
+	    count++;
+	}
+    }
 
     var itemList = { title: "Pelaajat",
 		     frameId: 0,
-		     header: [ [ [ framework.createUiHtmlCell("", "") ],
-				 [ framework.createUiHtmlCell("", "") ],
-				 [ framework.createUiHtmlCell("", "") ] ] ],
-		     items: items };
+		     header: fillHeaderRows(customers, mainDataVisibilityMap, mainDataSelectionMap),
+		     items: fillCustomerRows(customers, mainDataVisibilityMap, mainDataSelectionMap) }
 
     var frameList = [ { frameType: "fixedListFrame", frame: itemList } ];
 
@@ -104,17 +131,53 @@ function sendCustomersMainData(cookie) {
     framework.servicelog("Sent NEW customerMainData to client #" + cookie.count);
 }
 
-
-
-
-function servicelog(s) {
-    console.log((new Date()) + " --- " + s);
+function fillHeaderRows(customers, vMap, sMap) {
+    items = [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ],
+		createClickerElement(0, vMap[0], sMap[0]), createClickerElement(1, vMap[1], sMap[1]), createClickerElement(2, vMap[2], sMap[2]),
+		createClickerElement(3, vMap[3], sMap[3]), createClickerElement(4, vMap[4], sMap[4]), createClickerElement(5, vMap[5], sMap[5]),
+		createDueDateElement(6, sMap[6]), [ framework.createUiHtmlCell("", "") ] ] ];
+    return items;
 }
 
-function setStatustoClient(cookie, status) {
-    var sendable = { type: "statusData",
-		     content: status };
-    cookie.connection.send(JSON.stringify(sendable));
+function fillCustomerRows(customers, vMap, sMap) {
+    var count = 7
+    var items = [];
+    customers.forEach(function(c) {
+	items.push( [ [ framework.createUiTextNode("name", c.name) ],  [ framework.createUiTextNode("team", c.team) ],
+		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
+		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
+		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
+		      createDueDateElement(count, sMap[count++]),
+		      [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] );
+    });
+    return items;
+}
+
+
+function processSelectorClicked(cookie, content) {
+    framework.servicelog(JSON.stringify(content));
+    mainDataVisibilityMap[content.id] = content.state;
+    if(content.id < 7) {
+	var count = content.id + 7;
+	while(count < mainDataVisibilityMap.length) {
+	    mainDataVisibilityMap[count] = content.state;
+	    count = count + 7;
+	}
+    }
+    sendCustomersMainData(cookie);
+}
+
+function processSelectorSelected(cookie, content) {
+    framework.servicelog(JSON.stringify(content));
+    mainDataSelectionMap[content.id] = content.state;
+    if(content.id < 7) {
+	var count = content.id + 7;
+	while(count < mainDataSelectionMap.length) {
+	    mainDataSelectionMap[count] = content.state;
+	    count = count + 7;
+	}
+    }
+    sendCustomersMainData(cookie);
 }
 
 function getNiceDate(date) {
@@ -126,16 +189,6 @@ function getniceDateTime(date) {
 	    date.getHours().toString() + date.getMinutes().toString());
 }
 
-function sendPlainTextToClient(cookie, sendable) {
-    cookie.connection.send(JSON.stringify(sendable));
-}
-
-function sendCipherTextToClient(cookie, sendable) {
-    var cipherSendable = { type: sendable.type,
-			   content: Aes.Ctr.encrypt(JSON.stringify(sendable.content),
-						    cookie.aesKey, 128) };
-    cookie.connection.send(JSON.stringify(cipherSendable));
-}
 
 function printLanguageVariable(tag, language) {
     return "var " + tag + " = \"" + getLanguageText(language, tag) + "\";"
@@ -288,15 +341,6 @@ function processLoginResponse(cookie, content) {
     }
 }
 
-function processResetToMainState(cookie, content) {
-    var sendable;
-    servicelog("User session reset to main state");
-    cookie.invoiceData = createUserInvoiceData(cookie.user);
-    sendable = { type: "invoiceData",
-		 content: cookie.invoiceData };
-    sendCipherTextToClient(cookie, sendable);
-    servicelog("Sent invoiceData to client #" + cookie.count);
-}
 
 function processSaveCustomerList(cookie, content) {
     var sendable;
