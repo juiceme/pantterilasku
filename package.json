@@ -5,7 +5,7 @@
     "invoice generator",
     "pdf"
   ],
-  "version": "0.0.4",
+  "version": "0.0.5",
   "homepage": "http://www.swagman.org/",
   "author": {
     "name": "Jussi Ohenoja",
@@ -23,12 +23,12 @@
   "devDependencies": {
   },
   "dependencies": {
-    "websocket": "=1.0.22",
     "pdfkit": "=0.7.2",
     "emailjs": "=1.0.2",
     "archiver": "=1.0.1"
   },
   "scripts": {
+    "install": "git submodule init; git submodule update ; cd framework ; npm install ; cd .."
   },
   "engine": [
     "node >= v0.10.0"

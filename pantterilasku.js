@@ -1,16 +1,111 @@
-var websocket = require("websocket");
-var http = require("http");
+var framework = require("./framework/framework.js");
 var fs = require("fs");
 var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
 var path = require("path");
-var Aes = require('./crypto/aes.js');
-Aes.Ctr = require('./crypto/aes-ctr.js');
-var sha1 = require('./crypto/sha1.js');
 var datastorage = require('./datastorage/datastorage.js');
 var archiver = require("archiver");
 
-var globalSalt = sha1.hash(JSON.stringify(new Date().getTime()));
+var databaseVersion = 0;
+
+
+// Application specific part starts from here
+
+function handleApplicationMessage(cookie, decryptedMessage) {
+    if(decryptedMessage.type === "") {
+	process(cookie, decryptedMessage.content); }
+
+}
+
+
+// helpers
+
+function getApplicationData(cookie) {
+    return cookie.applicationData;
+}
+
+function getCustomersByCompany(team) {
+    var customers = [];
+    datastorage.read("customers").customers.forEach(function(c) {
+	if(c.team === team) { customers.push(c); }
+    });
+    return customers;
+}
+
+// Administration UI panel requires application to provide needed priviliges
+
+function createAdminPanelUserPriviliges() {
+    return [ { privilige: "view", code: "v" },
+	     { privilige: "customer-edit", code: "ce"},
+	     { privilige: "invoice-edit", code: "ie"},
+	     { privilige: "email-send", code: "e"} ];
+}
+
+
+// No default priviliges needed for self-created users.
+
+function createDefaultPriviliges() {
+    return [ ];
+}
+
+
+// Define the top button panel, always visible.
+// The panel automatically contains "Logout" and "Admin Mode" buttons so no need to include those.
+
+function createTopButtonList(cookie) {
+    return [ { button: { text: "Muokkaa Pelaajia", callbackMessage: "getPlayersDataForEdit" },
+	       priviliges: [ "customer-edit" ] },
+	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
+	       priviliges: [ "invoice-edit" ] } ];
+}
+
+
+// Main UI panel, list of customers and invoices
+
+function processResetToMainState(cookie, content) {
+    // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel" 
+    framework.servicelog("User session reset to main state");
+    cookie.user = datastorage.read("users").users.filter(function(u) {
+	return u.username === cookie.user.username;
+    })[0];
+    sendCustomersMainData(cookie);
+}
+
+function sendCustomersMainData(cookie) {
+    var sendable;
+    var topButtonList = framework.createTopButtons(cookie, [ { button: { text: "Help",
+									 callbackMessage: "getMainHelp" } } ]);
+
+    var customers = []
+    getApplicationData(cookie).teams.forEach(function(t) {
+	var customers = customers.concat(getCustomersByCompany(t));
+    });
+
+    var items = [];
+    customers.forEach(function(c) {
+	items.push( [ [ framework.createUiTextNode("name", t.name) ],
+		      [ framework.createUiTextNode("team", t.team) ] ] );
+    });
+
+    var itemList = { title: "Pelaajat",
+		     frameId: 0,
+		     header: [ [ [ framework.createUiHtmlCell("", "") ],
+				 [ framework.createUiHtmlCell("", "") ],
+				 [ framework.createUiHtmlCell("", "") ] ] ],
+		     items: items };
+
+    var frameList = [ { frameType: "fixedListFrame", frame: itemList } ];
+
+    sendable = { type: "createUiPage",
+		 content: { topButtonList: topButtonList,
+			    frameList: frameList } };
+
+    framework.sendCipherTextToClient(cookie, sendable);
+    framework.servicelog("Sent NEW customerMainData to client #" + cookie.count);
+}
+
+
+
 
 function servicelog(s) {
     console.log((new Date()) + " --- " + s);
@@ -116,92 +211,6 @@ function getClientVariables(language) {
 	printLanguageVariable("UI_TEXT_ALERT_E", language) + "\n\n";
 }
 
-var webServer = http.createServer(function(request,response){
-    var clienthead = fs.readFileSync("./clienthead", "utf8");
-    var variables = getClientVariables();
-    var clientbody = fs.readFileSync("./client.js", "utf8");
-    var aesjs = fs.readFileSync("./crypto/aes.js", "utf8");
-    var aesctrjs = fs.readFileSync("./crypto/aes-ctr.js", "utf8");
-    var sha1js = fs.readFileSync("./crypto/sha1.js", "utf8");
-    var sendable = clienthead + variables + clientbody + aesjs + aesctrjs + sha1js + "</script></body></html>";
-    response.writeHeader(200, { "Content-Type": "text/html",
-                                "X-Frame-Options": "deny",
-                                "X-XSS-Protection": "1; mode=block",
-                                "X-Content-Type-Options": "nosniff" });
-    response.write(sendable);
-    response.end();
-    servicelog("Respond with client to: " + JSON.stringify(request.headers));
-});
-
-wsServer = new websocket.server({
-    httpServer: webServer,
-    autoAcceptConnections: false
-});
-
-var connectionCount = 0;
-
-wsServer.on('request', function(request) {
-    servicelog("Connection from origin " + request.origin);
-    var connection = request.accept(null, request.origin);
-    var cookie = { count:connectionCount++, connection:connection, state:"new" };
-    var sendable;
-    var defaultUserRights = { priviliges: [ "none" ],
-			      teams: [],
-			      emailText: datastorage.read("email").defaultEmailText };
-    servicelog("Client #" + cookie.count  + " accepted");
-
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-	    try {
-		var receivable = JSON.parse(message.utf8Data);
-	    } catch(err) {
-		servicelog("Received illegal message: " + err);
-		return;
-	    }
-	    if(!receivable.type || !receivable.content) {
-		servicelog("Received broken message: " + JSON.stringify(receivable));
-		return;
-	    }
-
-//	    servicelog("Incoming message: " + JSON.stringify(receivable));
-	    var type = receivable.type;
-	    var content = receivable.content;
-
-            if(type === "clientStarted") { processClientStarted(cookie); }
-	    if(type === "userLogin") { processUserLogin(cookie, content); }
-	    if(type === "loginResponse") { processLoginResponse(cookie, content); }
-	    if(type === "createAccount") { processCreateAccount(cookie, defaultUserRights, content); }
-	    if((type === "confirmEmail") &&
-	       stateIs(cookie, "clientStarted")) { processConfirmEmail(cookie, content); }
-	    if((type === "validateAccount") &&
-	       stateIs(cookie, "clientStarted")) { processValidateAccount(cookie, content); }
-
-	    if((type === "getPdfPreview") &&
-	       stateIs(cookie, "loggedIn")) { processPdfPreview(cookie, content); }
-	    if((type === "sendInvoices") &&
-	       stateIs(cookie, "loggedIn")) { processSendInvoices(cookie, content); }
-	    if((type === "downloadInvoices") &&
-	       stateIs(cookie, "loggedIn")) { processDownloadInvoices(cookie, content); }
-	    if((type === "resetToMain") &&
-	       stateIs(cookie, "loggedIn")) { processResetToMainState(cookie, content); }
-	    if((type === "saveCustomerList") &&
-	       stateIs(cookie, "loggedIn")) { processSaveCustomerList(cookie, content); }
-	    if((type === "saveInvoiceList") &&
-	       stateIs(cookie, "loggedIn")) { processSaveInvoiceList(cookie, content); }
-	    if((type === "adminMode") &&
-	       stateIs(cookie, "loggedIn")) { processAdminMode(cookie, content); }
-	    if((type === "saveAdminData") &&
-	       stateIs(cookie, "loggedIn")) { processSaveAdminData(cookie, content); }
-	    if((type === "helpScreen") &&
-	       stateIs(cookie, "loggedIn")) { processHelpScreen(cookie, content); }
-	}
-    });
-
-    connection.on('close', function(connection) {
-	servicelog("Client #" + cookie.count  + " disconnected");
-        cookie = {};
-    });
-});
 
 function stateIs(cookie, state) {
     return (cookie.state === state);
@@ -1223,27 +1232,40 @@ if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
 if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
 if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 
-// datastorage.setLogger(servicelog);
-datastorage.initialize("main", { main: { port: 8080,
-					  language: "english",
-					  adminEmailAddess: "you <username@your-email.com>",
-					  siteFullUrl: "http://url.to.pantterilasku/" } });
-datastorage.initialize("language", { language: [ "finnish" , "english" ],
-				     substitution: [] });
-datastorage.initialize("users", { users: [] }, true);
-datastorage.initialize("pending", { pending: [] }, true);
-datastorage.initialize("customers", { customers: [] }, true);
-datastorage.initialize("invoices", { invoices: [] }, true);
-datastorage.initialize("company", { company: [] }, true);
-datastorage.initialize("email", { host: "smtp.your-email.com",
-				  user: "username",
-				  password: "password",
-				  sender: "you <username@your-email.com>",
-				  ssl: true,
-				  blindlyTrust: true });
 
-var mainConfig = datastorage.read("main");
+// Initialize application-specific datastorages
 
-webServer.listen(mainConfig.main.port, function() {
-    servicelog("Waiting for client connection to port " + mainConfig.main.port + "...");
-});
+function initializeDataStorages() {
+    framework.initializeDataStorages();
+
+    datastorage.initialize("customers", { customers: [] }, true);
+    datastorage.initialize("invoices", { invoices: [] }, true);
+    datastorage.initialize("company", { company: [] }, true);
+
+    var mainConfig = datastorage.read("main").main;
+
+    if(mainConfig.version === undefined) { mainConfig.version = 0; }
+    if(mainConfig.version > databaseVersion) {
+	framework.servicelog("Database version is too high for this program release, please update program.");
+	process.exit(1);
+    }
+}
+
+
+// Push callbacks to framework
+
+framework.setCallback("datastorageRead", datastorage.read);
+framework.setCallback("datastorageWrite", datastorage.write);
+framework.setCallback("datastorageInitialize", datastorage.initialize);
+framework.setCallback("handleApplicationMessage", handleApplicationMessage);
+framework.setCallback("processResetToMainState", processResetToMainState);
+framework.setCallback("createAdminPanelUserPriviliges", createAdminPanelUserPriviliges);
+framework.setCallback("createDefaultPriviliges", createDefaultPriviliges);
+framework.setCallback("createTopButtonList", createTopButtonList);
+
+
+// Start the web interface
+
+initializeDataStorages();
+framework.setApplicationName("Pantterilasku");
+framework.startUiLoop();
