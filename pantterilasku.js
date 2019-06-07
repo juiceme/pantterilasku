@@ -7,7 +7,7 @@ var datastorage = require('./datastorage/datastorage.js');
 var archiver = require("archiver");
 var util = require('util')
 
-var databaseVersion = 0;
+var databaseVersion = 1;
 
 
 // Application specific part starts from here
@@ -16,6 +16,12 @@ function handleApplicationMessage(cookie, decryptedMessage) {
     
 //    framework.servicelog("Got message: " + JSON.stringify(decryptedMessage));
 
+    if(decryptedMessage.type === "resetToMain") {
+	processResetToMainState(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getCustomersDataForEdit") {
+	processGetCustomersDataForEdit(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getInvoicesForEdit") {
+	processGetInvoicesForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "itemCountSelectorClicked") {
 	processItemCountSelectorClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "itemCountSelectorSelected") {
@@ -24,6 +30,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processLinkClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "invoiceSelectorSelected") {
 	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "saveAllCustomersData") {
+	processSaveAllCustomersData(cookie, decryptedMessage.content); }
 }
 
 
@@ -84,7 +92,7 @@ function createDefaultPriviliges() {
 // The panel automatically contains "Logout" and "Admin Mode" buttons so no need to include those.
 
 function createTopButtonList(cookie) {
-    return [ { button: { text: "Muokkaa Pelaajia", callbackMessage: "getPlayersDataForEdit" },
+    return [ { button: { text: "Muokkaa Asiakkaita", callbackMessage: "getCustomersDataForEdit" },
 	       priviliges: [ "customer-edit" ] },
 	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
 	       priviliges: [ "invoice-edit" ] } ];
@@ -240,6 +248,99 @@ function processInvoiceSelectorSelected(cookie, content) {
     framework.servicelog("invoice selected, id: " + JSON.stringify(content));
     mainInvoiceMap[content.id - 1] = content.state;
 }
+
+
+// Customers data editing
+
+function processGetCustomersDataForEdit(cookie, content) {
+    framework.servicelog("Client #" + cookie.count + " requests customers edit");
+    if(framework.userHasPrivilige("customer-edit", cookie.user)) {
+	// reset visibility/selection mappings as customers may change...
+	mainDataVisibilityMap = []; 
+	mainDataSelectionMap = [];
+	mainInvoiceMap = [];
+	var topButtonList = framework.createTopButtons(cookie);
+	var items = [];
+	var customers = [];
+	var teams = getApplicationData(cookie).teams;
+	teams.forEach(function(t) {
+	    customers = customers.concat(getCustomersByCompany(t));
+	});
+	customers.forEach(function(c) {
+	    items.push([ [ framework.createUiInputField(c.id, c.name, 15, false) ],
+			 [ framework.createUiInputField("address", c.address, 15, false) ],
+			 [ framework.createUiInputField("detail", c.detail, 15, false) ],
+			 [ framework.createUiInputField("email", c.email, 15, false) ],
+			 [ framework.createUiInputField("bankref", c.bankReference, 16, false) ],
+			 [ framework.createUiSelectionList("team", teams, c.team, true, false, false) ] ]);
+	});
+
+	var itemList = { title: "Customers",
+			 frameId: 0,
+			 header: [ [ [ framework.createUiHtmlCell("", "") ],
+				     [ framework.createUiHtmlCell("", "<b>Name</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Address</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Detail</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Email</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Bank Reference</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Team</b>") ] ] ],
+			 items: items,
+			 newItem: [ [ framework.createUiInputField("name", "", 15, false) ],
+				    [ framework.createUiInputField("address", "", 15, false) ],
+				    [ framework.createUiInputField("detail", "", 15, false) ],
+				    [ framework.createUiInputField("email", "", 15, false) ],
+				    [ framework.createUiInputField("bankref", "", 16, false) ],
+				    [ framework.createUiSelectionList("team", teams, 1, true, false, false) ] ] };
+
+	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllCustomersData" },
+			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
+
+	var sendable = { type: "createUiPage",
+			 content: { topButtonList: topButtonList,
+				    frameList: frameList,
+				    buttonList: buttonList } };
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("Sent customer data to client #" + cookie.count);
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
+	sendCustomersMainData(cookie);
+    }
+}
+
+function processSaveAllCustomersData(cookie, content) {
+    var newCustomers = [];
+    var nextId = datastorage.read("customers").nextId;
+    if(framework.userHasPrivilige("customer-edit", cookie.user)) {
+	content.items[0].frame.forEach(function(c) {
+	    var id = c[0][0].key;
+	    if(id === "name") { id = nextId++; }
+	    newCustomers.push({ id: id,
+				name: c[0][0].value,
+				address: c[1][0].value,
+				detail: c[2][0].value,
+				email: c[3][0].value,
+				bankReference: c[4][0].value,
+				team: c[5][0].selected });
+	});
+	if(datastorage.write("customers", { nextId: nextId, customers: newCustomers }) === false) {
+	    framework.servicelog("Updating customers database failed");
+	} else {
+	    framework.servicelog("Updated customers database");
+	}
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
+    }
+    sendCustomersMainData(cookie);
+}
+
+
+// Invoice data editing
+
+function processGetInvoicesForEdit(cookie, content) {
+}
+
+
 
 
 
@@ -1337,6 +1438,72 @@ setInterval(function() {
     }
 }, 1000*60*60);
 
+
+// database conversion and update
+
+function updateDatabaseVersionTo_1() {
+    var newItems = [];
+    var nextId = 1;
+    datastorage.read("company").company.forEach(function(c) {
+	newItems.push({ id: nextId++,
+			name: c.name,
+			shortName: c.id,
+			address: c.address,
+			bankName: c.bankName,
+			bic: c.bic,
+			iban: c.iban });
+    });
+    if(datastorage.write("company", { nextId: nextId, company: newItems }) === false) {
+	framework.servicelog("Updating company database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated company database to v.1");
+    }
+    newItems = [];
+    nextId = 1;
+    datastorage.read("invoices").invoices.forEach(function(i) {
+	newItems.push({ id: nextId++,
+			description: i.description,
+			price: i.price,
+			user: i.user,
+			vat: i.vat });
+    });
+    if(datastorage.write("invoices", { nextId: nextId, invoices: newItems }) === false) {
+	framework.servicelog("Updating invoices database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated invoices database to v.1");
+    }
+    newItems = [];
+    nextId = 1;
+    datastorage.read("customers").customers.forEach(function(c) {
+	newItems.push({ id: nextId++,
+			name: c.name,
+			address: c.address, 
+			detail: c.detail, 
+			email: c.email,  
+			bankReference: c.reference, 
+			team: c.team });
+    });
+    if(datastorage.write("customers", { nextId: nextId, customers: newItems }) === false) {
+	framework.servicelog("Updating customers database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated customers database to v.1");
+    }
+    var mainConfig = datastorage.read("main").main;
+    mainConfig.version = 1;
+    if(datastorage.write("main", { main: mainConfig }) === false) {
+	framework.servicelog("Updating main database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated main database to v.1");
+    }
+}
+
+
+// Create needed directories
+
 if (!fs.existsSync("./temp/")){ fs.mkdirSync("./temp/"); }
 if (!fs.existsSync("./sent_invoices/")){ fs.mkdirSync("./sent_invoices/"); }
 if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
@@ -1357,6 +1524,13 @@ function initializeDataStorages() {
     if(mainConfig.version > databaseVersion) {
 	framework.servicelog("Database version is too high for this program release, please update program.");
 	process.exit(1);
+    }
+    if(mainConfig.version < databaseVersion) {
+	framework.servicelog("Updating database version to most recent supported by this program release.");
+	if(mainConfig.version === 0) {
+	    // update database version from 0 to 1
+	    updateDatabaseVersionTo_1();
+	}
     }
 }
 
