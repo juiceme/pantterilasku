@@ -16,13 +16,14 @@ function handleApplicationMessage(cookie, decryptedMessage) {
     
 //    framework.servicelog("Got message: " + JSON.stringify(decryptedMessage));
 
-    if(decryptedMessage.type === "selectorClicked") {
-	processSelectorClicked(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "selectorSelected") {
-	processSelectorSelected(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "itemCountSelectorClicked") {
+	processItemCountSelectorClicked(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "itemCountSelectorSelected") {
+	processItemCountSelectorSelected(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "linkClicked") {
 	processLinkClicked(cookie, decryptedMessage.content); }
-
+    if(decryptedMessage.type === "invoiceSelectorSelected") {
+	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
 }
 
 
@@ -42,9 +43,9 @@ function getCustomersByCompany(team) {
 
 function createClickerElement(id, state, value) {
     return [ framework.createUiCheckBox("tick", state, "tick", true,
-					"sendToServerEncrypted('selectorClicked', { id: " + id + ", state: document.getElementById(this.id).checked } );"),
+					"sendToServerEncrypted('itemCountSelectorClicked', { id: " + id + ", state: document.getElementById(this.id).checked } );"),
 	     framework.createUiSelectionList("sel", [1,2,3,4,5,6,7,8,9], value, true, !state, false,
-					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
+					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
 }
 
 function createDueDateElement(header, id, value) {
@@ -52,7 +53,7 @@ function createDueDateElement(header, id, value) {
 	if(header) { selectorElement.push(framework.createUiTextNode("due date", "Eräpäivä")); }
 	selectorElement.push(framework.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ],
 							     value, true, false, false,
-							     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );"));
+							     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );"));
 	return selectorElement;
 }
 
@@ -95,9 +96,6 @@ function createTopButtonList(cookie) {
 function processResetToMainState(cookie, content) {
     // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel" 
     framework.servicelog("User session reset to main state");
-
-//    framework.servicelog("My own cookie is: " + util.inspect(cookie));
-
     cookie.user = datastorage.read("users").users.filter(function(u) {
 	return u.username === cookie.user.username;
     })[0];
@@ -106,14 +104,20 @@ function processResetToMainState(cookie, content) {
 
 var mainDataVisibilityMap = [];
 var mainDataSelectionMap = [];
+var mainInvoiceMap = [];
 
 function sendCustomersMainData(cookie) {
+//    framework.servicelog("My own cookie is: " + util.inspect(cookie));
     var sendable;
     var topButtonList = framework.createTopButtons(cookie, [ { button: { text: "Help",
 									 callbackMessage: "getMainHelp" } } ]);
-    var customers = []
+    var customers = [];
     getApplicationData(cookie).teams.forEach(function(t) {
 	customers = customers.concat(getCustomersByCompany(t));
+    });
+    var invoices = [];
+    datastorage.read("invoices").invoices.forEach(function(i) {
+	if(i.user === cookie.user.username) { invoices.push(i); }
     });
 
     if(mainDataVisibilityMap.length === 0) {
@@ -124,14 +128,25 @@ function sendCustomersMainData(cookie) {
 	    else { mainDataSelectionMap.push(1); }
 	    count++;
 	}
+	count = 0;
+	while(count < 7) {
+	    mainInvoiceMap.push(false);
+	    count++;
+	}
     }
 
-    var itemList = { title: "Pelaajat",
-		     frameId: 0,
-		     header: fillHeaderRows(customers, mainDataVisibilityMap, mainDataSelectionMap),
-		     items: fillCustomerRows(customers, mainDataVisibilityMap, mainDataSelectionMap) }
+    var customerList = { title: "Pelaajat",
+			 frameId: 0,
+			 header: fillHeaderRows(customers, mainDataVisibilityMap, mainDataSelectionMap),
+			 items: fillCustomerRows(customers, mainDataVisibilityMap, mainDataSelectionMap) };
 
-    var frameList = [ { frameType: "fixedListFrame", frame: itemList } ];
+    var invoiceList = { title: "Laskupohjat",
+			frameId: 1,
+			header: [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] ],
+			items: createInvoiceTable(invoices) };
+
+    var frameList = [ { frameType: "fixedListFrame", frame: customerList },
+		      { frameType: "fixedListFrame", frame: invoiceList } ];
 
     sendable = { type: "createUiPage",
 		 content: { topButtonList: topButtonList,
@@ -149,6 +164,18 @@ function fillHeaderRows(customers, vMap, sMap) {
     return items;
 }
 
+function createInvoiceTable(invoices) {
+    var items = [];
+    var count = 1;
+    while(count < 7) {
+	items.push([ [ framework.createUiTextNode("number", count) ],
+		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.description; }), 1, true, false, true,
+						       "var nSelection = document.getElementById(this.id); sendToServerEncrypted('invoiceSelectorSelected', { id: " + count + ", state: nSelection.options[nSelection.selectedIndex].item })") ] ] );
+	count ++;
+    }
+    return items;
+}
+
 function fillCustomerRows(customers, vMap, sMap) {
     var count = 8
     var items = [];
@@ -163,8 +190,7 @@ function fillCustomerRows(customers, vMap, sMap) {
     return items;
 }
 
-
-function processSelectorClicked(cookie, content) {
+function processItemCountSelectorClicked(cookie, content) {
     mainDataVisibilityMap[content.id] = content.state;
     if(content.id < 7) {
 	var count = content.id + 8;
@@ -177,7 +203,7 @@ function processSelectorClicked(cookie, content) {
     sendCustomersMainData(cookie);
 }
 
-function processSelectorSelected(cookie, content) {
+function processItemCountSelectorSelected(cookie, content) {
     mainDataSelectionMap[content.id] = content.state;
     if(content.id < 7) {
 	var count = content.id + 8;
@@ -209,6 +235,13 @@ function processLinkClicked(cookie, content) {
     framework.servicelog("link clicked, id: " + JSON.stringify(content));
     framework.servicelog("map: " + JSON.stringify(mainDataSelectionMap));
 }
+
+function processInvoiceSelectorSelected(cookie, content) {
+    framework.servicelog("invoice selected, id: " + JSON.stringify(content));
+    mainInvoiceMap[content.id - 1] = content.state;
+}
+
+
 
 
 
