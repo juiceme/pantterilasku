@@ -20,6 +20,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processSelectorClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "selectorSelected") {
 	processSelectorSelected(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "linkClicked") {
+	processLinkClicked(cookie, decryptedMessage.content); }
 
 }
 
@@ -45,11 +47,18 @@ function createClickerElement(id, state, value) {
 					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
 }
 
-function createDueDateElement(id, value) {
-    return [ /* framework.createUiHtmlCell("due date", "<b>Eräpäivä</b>"), */
-	framework.createUiTextNode("due date", "Eräpäivä"), 
-	framework.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ], value, true, false, false,
-					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );") ];
+function createDueDateElement(header, id, value) {
+	var selectorElement = [];
+	if(header) { selectorElement.push(framework.createUiTextNode("due date", "Eräpäivä")); }
+	selectorElement.push(framework.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ],
+							     value, true, false, false,
+							     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('selectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );"));
+	return selectorElement;
+}
+
+function createPreviewLink(id, value) {
+    return [ framework.createUiHtmlCell("", "<a href=#>preview</a>", "#ffffff", !value,
+					"sendToServerEncrypted('linkClicked', { id: " + id + " } );") ];
 }
 
 
@@ -109,9 +118,10 @@ function sendCustomersMainData(cookie) {
 
     if(mainDataVisibilityMap.length === 0) {
 	var count = 0
-	while(count < customers.length * 7 + 7) {
+	while(count < customers.length * 8 + 8) {
 	    mainDataVisibilityMap.push(false);
-	    mainDataSelectionMap.push(1);
+	    if(((count+2) % 8) === 0) { mainDataSelectionMap.push("Heti"); }
+	    else { mainDataSelectionMap.push(1); }
 	    count++;
 	}
     }
@@ -135,50 +145,72 @@ function fillHeaderRows(customers, vMap, sMap) {
     items = [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ],
 		createClickerElement(0, vMap[0], sMap[0]), createClickerElement(1, vMap[1], sMap[1]), createClickerElement(2, vMap[2], sMap[2]),
 		createClickerElement(3, vMap[3], sMap[3]), createClickerElement(4, vMap[4], sMap[4]), createClickerElement(5, vMap[5], sMap[5]),
-		createDueDateElement(6, sMap[6]), [ framework.createUiHtmlCell("", "") ] ] ];
+		createDueDateElement(true, 6, sMap[6]), [ framework.createUiHtmlCell("", "") ] ] ];
     return items;
 }
 
 function fillCustomerRows(customers, vMap, sMap) {
-    var count = 7
+    var count = 8
     var items = [];
     customers.forEach(function(c) {
 	items.push( [ [ framework.createUiTextNode("name", c.name) ],  [ framework.createUiTextNode("team", c.team) ],
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
-		      createDueDateElement(count, sMap[count++]),
-		      [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] );
+		      createDueDateElement(false, count, sMap[count++]), createPreviewLink((count-7)/8, vMap[count++]),
+		      [ framework.createUiHtmlCell("", "") ] ] );
     });
     return items;
 }
 
 
 function processSelectorClicked(cookie, content) {
-    framework.servicelog(JSON.stringify(content));
     mainDataVisibilityMap[content.id] = content.state;
     if(content.id < 7) {
-	var count = content.id + 7;
+	var count = content.id + 8;
 	while(count < mainDataVisibilityMap.length) {
 	    mainDataVisibilityMap[count] = content.state;
-	    count = count + 7;
+	    count = count + 8;
+	}
+    }
+    togglePreviewLinkVisibility();
+    sendCustomersMainData(cookie);
+}
+
+function processSelectorSelected(cookie, content) {
+    mainDataSelectionMap[content.id] = content.state;
+    if(content.id < 7) {
+	var count = content.id + 8;
+	while(count < mainDataSelectionMap.length) {
+	    mainDataSelectionMap[count] = content.state;
+	    count = count + 8;
 	}
     }
     sendCustomersMainData(cookie);
 }
 
-function processSelectorSelected(cookie, content) {
-    framework.servicelog(JSON.stringify(content));
-    mainDataSelectionMap[content.id] = content.state;
-    if(content.id < 7) {
-	var count = content.id + 7;
-	while(count < mainDataSelectionMap.length) {
-	    mainDataSelectionMap[count] = content.state;
-	    count = count + 7;
+function togglePreviewLinkVisibility() {
+    var row = 1;
+    var pos = 0;
+    var flag = false;
+    while((row * 8 + pos) < mainDataVisibilityMap.length) {
+	pos = 0;
+	flag = false;
+	while(pos < 6) {
+	    if(mainDataVisibilityMap[row * 8 + pos] === true) { flag = true; }
+	    pos++;
 	}
+	mainDataVisibilityMap[row * 8 + 7] = flag;
+	row++;
     }
-    sendCustomersMainData(cookie);
 }
+
+function processLinkClicked(cookie, content) {
+    framework.servicelog("link clicked, id: " + JSON.stringify(content));
+    framework.servicelog("map: " + JSON.stringify(mainDataSelectionMap));
+}
+
+
 
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
