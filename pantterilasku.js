@@ -32,6 +32,9 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllCustomersData") {
 	processSaveAllCustomersData(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "saveAllInvoiceData") {
+	processSaveAllInvoiceData(cookie, decryptedMessage.content); }
+
 }
 
 
@@ -309,9 +312,9 @@ function processGetCustomersDataForEdit(cookie, content) {
 }
 
 function processSaveAllCustomersData(cookie, content) {
-    var newCustomers = [];
-    var nextId = datastorage.read("customers").nextId;
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
+	var newCustomers = [];
+	var nextId = datastorage.read("customers").nextId;
 	content.items[0].frame.forEach(function(c) {
 	    var id = c[0][0].key;
 	    if(id === "name") { id = nextId++; }
@@ -338,6 +341,74 @@ function processSaveAllCustomersData(cookie, content) {
 // Invoice data editing
 
 function processGetInvoicesForEdit(cookie, content) {
+    framework.servicelog("Client #" + cookie.count + " requests invoices edit");
+    if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
+	var topButtonList = framework.createTopButtons(cookie);
+	var items = [];
+	var invoices = [];
+	datastorage.read("invoices").invoices.forEach(function(i) {
+	    if(i.user === cookie.user.username) { invoices.push(i); }
+	});
+	invoices.forEach(function(i) {
+	    items.push([ [ framework.createUiInputField(i.id, i.description, 15, false) ],
+			 [ framework.createUiInputField("price", i.price, 15, false) ],
+			 [ framework.createUiInputField("vat", i.vat, 15, false) ] ]);
+	});
+
+	var itemList = { title: "Invoices",
+			 frameId: 0,
+			 header: [ [ [ framework.createUiHtmlCell("", "") ],
+				     [ framework.createUiHtmlCell("", "<b>Item</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Price w/o taxes</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Vat %</b>") ] ] ],
+			 items: items,
+			 newItem: [ [ framework.createUiInputField("description", "", 15, false) ],
+				    [ framework.createUiInputField("price", "", 15, false) ],
+				    [ framework.createUiInputField("vat", "", 15, false) ] ] };
+
+	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllInvoiceData" },
+			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
+
+	var sendable = { type: "createUiPage",
+			 content: { topButtonList: topButtonList,
+				    frameList: frameList,
+				    buttonList: buttonList } };
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("Sent invoice data to client #" + cookie.count);
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
+	sendCustomersMainData(cookie);
+    }
+}
+
+function processSaveAllInvoiceData(cookie, content) {
+    if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
+	var newInvoices = [];
+	var nextId = datastorage.read("invoices").nextId;
+	content.items[0].frame.forEach(function(i) {
+	    var id = i[0][0].key;
+	    if(id === "description") { id = nextId++; }
+	    newInvoices.push({ id: id,
+			       description: i[0][0].value,
+			       price: i[1][0].value,
+			       vat: i[2][0].value,
+			       user: cookie.user.username });
+	});
+	var allInvoices = [];
+	datastorage.read("invoices").invoices.forEach(function(i) {
+	    if(i.user !== cookie.user.username) { allInvoices.push(i); }
+	});
+	allInvoices = allInvoices.concat(newInvoices);
+	if(datastorage.write("invoices", { nextId: nextId, invoices: allInvoices }) === false) {
+	    framework.servicelog("Updating invoice database failed");
+	} else {
+	    framework.servicelog("Updated invoice database");
+	}
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
+    }
+    sendCustomersMainData(cookie);
 }
 
 
