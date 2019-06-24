@@ -154,7 +154,7 @@ function sendCustomersMainData(cookie) {
     var invoiceList = { title: "Laskupohjat",
 			frameId: 1,
 			header: [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] ],
-			items: createInvoiceTable(invoices) };
+			items: createInvoiceTable(invoices, mainInvoiceMap) };
 
     var frameList = [ { frameType: "fixedListFrame", frame: customerList },
 		      { frameType: "fixedListFrame", frame: invoiceList } ];
@@ -175,12 +175,12 @@ function fillHeaderRows(customers, vMap, sMap) {
     return items;
 }
 
-function createInvoiceTable(invoices) {
+function createInvoiceTable(invoices, iMap) {
     var items = [];
     var count = 1;
     while(count < 7) {
 	items.push([ [ framework.createUiTextNode("number", count) ],
-		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.description; }), 1, true, false, true,
+		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.description; }), iMap[count], true, false, true,
 						       "var nSelection = document.getElementById(this.id); sendToServerEncrypted('invoiceSelectorSelected', { id: " + count + ", state: nSelection.options[nSelection.selectedIndex].item })") ] ] );
 	count ++;
     }
@@ -248,8 +248,7 @@ function processLinkClicked(cookie, content) {
 }
 
 function processInvoiceSelectorSelected(cookie, content) {
-    framework.servicelog("invoice selected, id: " + JSON.stringify(content));
-    mainInvoiceMap[content.id - 1] = content.state;
+    mainInvoiceMap[content.id] = content.state;
 }
 
 
