@@ -257,10 +257,6 @@ function processInvoiceSelectorSelected(cookie, content) {
 function processGetCustomersDataForEdit(cookie, content) {
     framework.servicelog("Client #" + cookie.count + " requests customers edit");
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
-	// reset visibility/selection mappings as customers may change...
-	mainDataVisibilityMap = []; 
-	mainDataSelectionMap = [];
-	mainInvoiceMap = [];
 	var topButtonList = framework.createTopButtons(cookie);
 	var items = [];
 	var customers = [];
@@ -312,6 +308,10 @@ function processGetCustomersDataForEdit(cookie, content) {
 
 function processSaveAllCustomersData(cookie, content) {
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
+	// reset visibility/selection mappings as customers may change...
+	mainDataVisibilityMap = []; 
+	mainDataSelectionMap = [];
+	mainInvoiceMap = [];
 	var newCustomers = [];
 	var nextId = datastorage.read("customers").nextId;
 	content.items[0].frame.forEach(function(c) {
@@ -383,6 +383,10 @@ function processGetInvoicesForEdit(cookie, content) {
 
 function processSaveAllInvoiceData(cookie, content) {
     if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
+	// reset visibility/selection mappings as customers may change...
+	mainDataVisibilityMap = []; 
+	mainDataSelectionMap = [];
+	mainInvoiceMap = [];
 	var newInvoices = [];
 	var nextId = datastorage.read("invoices").nextId;
 	content.items[0].frame.forEach(function(i) {
