@@ -68,9 +68,9 @@ function createDueDateElement(header, id, value) {
 	return selectorElement;
 }
 
-function createPreviewLink(id, value) {
+function createPreviewLink(count, id, value) {
     return [ framework.createUiHtmlCell("", "<a href=#>preview</a>", "#ffffff", !value,
-					"sendToServerEncrypted('linkClicked', { id: " + id + " } );") ];
+					"sendToServerEncrypted('linkClicked', { count: " + count + ", id: " + id + " } );") ];
 }
 
 
@@ -195,7 +195,7 @@ function fillCustomerRows(customers, vMap, sMap) {
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
-		      createDueDateElement(false, count, sMap[count++]), createPreviewLink((count-7)/8, vMap[count++]),
+		      createDueDateElement(false, count, sMap[count++]), createPreviewLink((count-7)/8, c.id, vMap[count++]),
 		      [ framework.createUiHtmlCell("", "") ] ] );
     });
     return items;
@@ -243,8 +243,16 @@ function togglePreviewLinkVisibility() {
 }
 
 function processLinkClicked(cookie, content) {
-    framework.servicelog("link clicked, id: " + JSON.stringify(content));
-    framework.servicelog("map: " + JSON.stringify(mainDataSelectionMap));
+    var invoice = mainDataVisibilityMap.slice(content.count * 8, content.count * 8 + 6).map(function(s, n) {
+	if(s) { return { item: mainInvoiceMap[n + 1],
+			 count: mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 6)[n] }; }
+	else { return false; }
+    }).filter(function(f){ return f; });
+
+
+    framework.setStatustoClient(cookie, "Printing preview");
+    printPreview(pushPreviewToClient, cookie, { customer: content.id, invoice: invoice });
+
 }
 
 function processInvoiceSelectorSelected(cookie, content) {
@@ -691,6 +699,11 @@ function processHelpScreen(cookie, content) {
 
 function printPreview(callback, cookie, previewData)
 {
+
+    console.log(JSON.stringify(previewData));
+
+
+/*
     var filename = "./temp/preview.pdf";
     var now = new Date();
 
@@ -735,6 +748,7 @@ function printPreview(callback, cookie, previewData)
 
     pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     servicelog("Created PDF preview document");
+*/
 }
 
 function sendBulkEmail(cookie, invoiceData) {
