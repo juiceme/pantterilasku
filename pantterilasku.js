@@ -40,8 +40,12 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 
 // helpers
 
-function getApplicationData(cookie) {
-    return cookie.user.applicationData;
+function getTeams(cookie) {
+    return datastorage.read("teams").teams.map(function(t) {
+	if(t.username === cookie.user.username) {
+	    return t.teams;
+	}
+    }).filter(function(f){ return f; });
 }
 
 function getCustomersByCompany(team) {
@@ -123,9 +127,12 @@ function sendCustomersMainData(cookie) {
     var topButtonList = framework.createTopButtons(cookie, [ { button: { text: "Help",
 									 callbackMessage: "getMainHelp" } } ]);
     var customers = [];
-    getApplicationData(cookie).teams.forEach(function(t) {
-	customers = customers.concat(getCustomersByCompany(t));
-    });
+    teams = getTeams(cookie);
+    if(teams.length !== 0) {
+	teams.forEach(function(t) {
+	    customers = customers.concat(getCustomersByCompany(t));
+	});
+    }
     var invoices = [];
     datastorage.read("invoices").invoices.forEach(function(i) {
 	if(i.user === cookie.user.username) { invoices.push(i); }
@@ -268,10 +275,12 @@ function processGetCustomersDataForEdit(cookie, content) {
 	var topButtonList = framework.createTopButtons(cookie);
 	var items = [];
 	var customers = [];
-	var teams = getApplicationData(cookie).teams;
-	teams.forEach(function(t) {
-	    customers = customers.concat(getCustomersByCompany(t));
-	});
+	teams = getTeams(cookie);
+	if(teams.length !== 0) {
+	    teams.forEach(function(t) {
+		customers = customers.concat(getCustomersByCompany(t));
+	    });
+	}
 	customers.forEach(function(c) {
 	    items.push([ [ framework.createUiInputField(c.id, c.name, 15, false) ],
 			 [ framework.createUiInputField("address", c.address, 15, false) ],
@@ -1605,6 +1614,7 @@ function initializeDataStorages() {
     datastorage.initialize("customers", { customers: [] }, true);
     datastorage.initialize("invoices", { invoices: [] }, true);
     datastorage.initialize("company", { company: [] }, true);
+    datastorage.initialize("teams", { teams: [] }, true);
 
     var mainConfig = datastorage.read("main").main;
 
