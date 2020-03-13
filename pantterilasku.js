@@ -1653,58 +1653,101 @@ setInterval(function() {
 // database conversion and update
 
 function updateDatabaseVersionTo_1() {
-    var newItems = [];
-    var nextId = 1;
-    datastorage.read("company").company.forEach(function(c) {
-	newItems.push({ id: nextId++,
-			name: c.name,
-			shortName: c.id,
-			address: c.address,
-			bankName: c.bankName,
-			bic: c.bic,
-			iban: c.iban });
+    var mainConfig = datastorage.read("main").main;
+    var userConfig = datastorage.read("users").users;
+    var companyConfig = datastorage.read("company").company;
+    var customersConfig = datastorage.read("customers").customers;
+    var invoicesConfig = datastorage.read("invoices").invoices;
+    var nextId;
+
+    var newUserConfig = []
+    userConfig.forEach(function(u) {
+	newUserConfig.push({ username: u.username,
+			     hash: u.hash,
+			     password: u.password,
+			     realname: u.realname,
+			     email: u.email,
+			     phone: u.phone,
+			     language: mainConfig.defaultLanguage,
+			     applicationData: { priviliges: u.applicationData.priviliges } });
     });
-    if(datastorage.write("company", { nextId: nextId, company: newItems }) === false) {
-	framework.servicelog("Updating company database failed");
+    if(datastorage.write("users", { users: newUserConfig }) === false) {
+	framework.servicelog("Updating user database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated company database to v.1");
+	framework.servicelog("Updated user database to v.1");
     }
-    newItems = [];
+
+    var newAccessConfig = [];
+    userConfig.forEach(function(u) {
+	newAccessConfig.push({ username: u.username,
+			       teams: u.applicationData.teams,
+			       emailText: u.applicationData.emailText });
+    });
+    if(datastorage.write("access", { access: newAccessConfig }) === false) {
+	framework.servicelog("Updating access database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated access database to v.1");
+    }
+
+    var newTeamsConfig = [];
+    nextId = 1;
+    companyConfig.forEach(function(c) {
+	newTeamsConfig.push({ id: nextId++,
+			      color: c.id,
+			      name: c.name,
+			      address: c.address,
+			      bank: c.bankName,
+			      iban: c.iban,
+			      bic: c.bic });
+    });
+    if(datastorage.write("teams", { nextId: nextId, teams: newTeamsConfig }) === false) {
+	framework.servicelog("Updating teams database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated teams database to v.1");
+    }
+
+    var newPlayersConfig = [];
+    nextId = 1;
+    customersConfig.forEach(function(c) {
+	newPlayersConfig.push({ id: nextId++,
+				name: c.name,
+				address: c.address,
+				detail: c.detail,
+				email: c.email,
+				reference: c.reference,
+				team: c.team });
+    });
+    if(datastorage.write("players", { nextId: nextId, players: newPlayersConfig }) === false) {
+	framework.servicelog("Updating players database failed");
+	process.exit(1);
+    } else {
+	framework.servicelog("Updated players database to v.1");
+    }
+
+    var newInvoiceConfig = [];
     nextId = 1;
     datastorage.read("invoices").invoices.forEach(function(i) {
-	newItems.push({ id: nextId++,
-			description: i.description,
-			price: i.price,
-			user: i.user,
-			vat: i.vat });
+	newInvoiceConfig.push({ id: nextId++,
+				description: i.description,
+				price: i.price,
+				user: i.user,
+				vat: i.vat });
     });
-    if(datastorage.write("invoices", { nextId: nextId, invoices: newItems }) === false) {
+    if(datastorage.write("invoices", { nextId: nextId, invoices: newInvoiceConfig }) === false) {
 	framework.servicelog("Updating invoices database failed");
 	process.exit(1);
     } else {
 	framework.servicelog("Updated invoices database to v.1");
     }
-    newItems = [];
-    nextId = 1;
-    datastorage.read("customers").customers.forEach(function(c) {
-	newItems.push({ id: nextId++,
-			name: c.name,
-			address: c.address, 
-			detail: c.detail, 
-			email: c.email,  
-			bankReference: c.reference, 
-			team: c.team });
-    });
-    if(datastorage.write("customers", { nextId: nextId, customers: newItems }) === false) {
-	framework.servicelog("Updating customers database failed");
-	process.exit(1);
-    } else {
-	framework.servicelog("Updated customers database to v.1");
-    }
-    var mainConfig = datastorage.read("main").main;
-    mainConfig.version = 1;
-    if(datastorage.write("main", { main: mainConfig }) === false) {
+
+    if(datastorage.write("main", { main: { version: 1,
+					    port: mainConfig.port,
+					    siteFullUrl: mainConfig.siteFullUrl,
+					    emailVerification: false,
+					   defaultLanguage: mainConfig.language } } ) === false) {
 	framework.servicelog("Updating main database failed");
 	process.exit(1);
     } else {
@@ -1724,15 +1767,17 @@ if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 
 function initializeDataStorages() {
     framework.initializeDataStorages();
-
-    datastorage.initialize("customers", { nextId: 1, customers: [] }, true);
-    datastorage.initialize("invoices", { nextId: 1, invoices: [] }, true);
-    datastorage.initialize("company", { nextId: 1, company: [] }, true);
-    datastorage.initialize("teams", { teams: [] }, true);
-
     var mainConfig = datastorage.read("main").main;
+    if(mainConfig.version === undefined) {
+	mainConfig.version = 0;
+	datastorage.initialize("customers", { nextId: 1, customers: [] }, true);
+	datastorage.initialize("company", { nextId: 1, company: [] }, true);
+    }
+    datastorage.initialize("invoices", { nextId: 1, invoices: [] }, true);
+    datastorage.initialize("teams", { nextId: 1, teams: [] }, true);
+    datastorage.initialize("players", { nextId: 1, players: [] }, true);
+    datastorage.initialize("access", { access: [] }, true);
 
-    if(mainConfig.version === undefined) { mainConfig.version = 0; }
     if(mainConfig.version > databaseVersion) {
 	framework.servicelog("Database version is too high for this program release, please update program.");
 	process.exit(1);
