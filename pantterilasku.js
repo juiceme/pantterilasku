@@ -18,6 +18,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 
     if(decryptedMessage.type === "resetToMain") {
 	processResetToMainState(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getTeamsDataForEdit") {
+	processGetTeamsDataForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getCustomersDataForEdit") {
 	processGetCustomersDataForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getInvoicesForEdit") {
@@ -30,6 +32,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processLinkClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "invoiceSelectorSelected") {
 	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "saveAllTeamsData") {
+	processSaveAllTeamsData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllCustomersData") {
 	processSaveAllCustomersData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllInvoiceData") {
@@ -82,6 +86,7 @@ function createPreviewLink(count, id, value) {
 
 function createAdminPanelUserPriviliges() {
     return [ { privilige: "view", code: "v" },
+	     { privilige: "teams-edit", code: "te"},
 	     { privilige: "customer-edit", code: "ce"},
 	     { privilige: "invoice-edit", code: "ie"},
 	     { privilige: "email-send", code: "e"} ];
@@ -99,7 +104,9 @@ function createDefaultPriviliges() {
 // The panel automatically contains "Logout" and "Admin Mode" buttons so no need to include those.
 
 function createTopButtonList(cookie) {
-    return [ { button: { text: "Muokkaa Asiakkaita", callbackMessage: "getCustomersDataForEdit" },
+    return [ { button: { text: "Muokkaa Joukkueita", callbackMessage: "getTeamsDataForEdit" },
+	       priviliges: [ "teams-edit" ] },
+	     { button: { text: "Muokkaa Asiakkaita", callbackMessage: "getCustomersDataForEdit" },
 	       priviliges: [ "customer-edit" ] },
 	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
 	       priviliges: [ "invoice-edit" ] } ];
@@ -264,6 +271,113 @@ function processLinkClicked(cookie, content) {
 
 function processInvoiceSelectorSelected(cookie, content) {
     mainInvoiceMap[content.id] = content.state;
+}
+
+
+// Teams data editing
+
+function processGetTeamsDataForEdit(cookie, content) {
+    framework.servicelog("Client #" + cookie.count + " requests teams edit");
+    if(framework.userHasPrivilige("teams-edit", cookie.user)) {
+	var topButtonList = framework.createTopButtons(cookie);
+	var users = [];
+	var teams = datastorage.read("teams").teams;
+	datastorage.read("users").users.forEach(function(u) {
+	    users.push({ user: u.username,
+			 teams: teams.map(function(t) {
+			     if(u.username === t.username) { return t.teams; }
+			 }).filter(function(f){ return f; })
+		       });
+	});
+	var userItems = [];
+	users.forEach(function(u) {
+	    userItems.push([ [ framework.createUiTextNode("username", u.user) ],
+			     [ framework.createUiInputField("teams", u.teams, 15, false) ] ] );
+	});
+	var userItemList = { title: "Users",
+			     frameId: 0,
+			     header: [ [ [ framework.createUiHtmlCell("", "<b>User</b>") ],
+				       [ framework.createUiHtmlCell("", "<b>Team colors</b>") ] ] ],
+			     items: userItems };
+	var companyItems = [];
+	datastorage.read("company").company.forEach(function(c) {
+	    companyItems.push([ [ framework.createUiInputField(c.id, c.color, 15, false) ],
+				[ framework.createUiInputField("name", c.name, 15, false) ],
+				[ framework.createUiInputField("address", c.address, 15, false) ],
+				[ framework.createUiInputField("bank", c.bank, 15, false) ],
+				[ framework.createUiInputField("iban", c.iban, 15, false) ],
+				[ framework.createUiInputField("bic", c.bic, 15, false) ] ]);
+	});
+	var companyItemList = { title: "Teams",
+				frameId: 1,
+				header: [ [ [ framework.createUiHtmlCell("", "") ],
+					    [ framework.createUiHtmlCell("", "<b>Color</b>") ],
+					    [ framework.createUiHtmlCell("", "<b>Name</b>") ],
+					    [ framework.createUiHtmlCell("", "<b>Address</b>") ],
+					    [ framework.createUiHtmlCell("", "<b>Bank</b>") ],
+					    [ framework.createUiHtmlCell("", "<b>IBAN</b>") ],
+					    [ framework.createUiHtmlCell("", "<b>BIC</b>") ] ] ],
+				items: companyItems,
+				newItem: [ [ framework.createUiInputField("color", "", 15, false) ],
+					   [ framework.createUiInputField("name", "", 15, false) ],
+					   [ framework.createUiInputField("address", "", 15, false) ],
+					   [ framework.createUiInputField("bank", "", 15, false) ],
+					   [ framework.createUiInputField("iban", "", 15, false) ],
+					   [ framework.createUiInputField("bic", "", 15, false) ] ] };
+	var frameList = [ { frameType: "fixedListFrame", frame: userItemList },
+			  { frameType: "editListFrame", frame: companyItemList } ];
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllTeamsData" },
+			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
+	var sendable = { type: "createUiPage",
+			 content: { topButtonList: topButtonList,
+				    frameList: frameList,
+				    buttonList: buttonList } };
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("Sent teams data to client #" + cookie.count);
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+	sendCustomersMainData(cookie);
+    }
+}
+
+function processSaveAllTeamsData(cookie, content) {
+    if(framework.userHasPrivilige("teams-edit", cookie.user)) {
+	// reset visibility/selection mappings as customers may change...
+	mainDataVisibilityMap = []; 
+	mainDataSelectionMap = [];
+	mainInvoiceMap = [];
+	newTeams = [];
+	content.items[0].frame.forEach(function(u) {
+	    newTeams.push({ username: u[0][0].text,
+			    teams: u[1][0].value });
+	});
+	newCompanies = [];
+	var nextId = datastorage.read("company").nextId;
+	content.items[1].frame.forEach(function(t) {
+	    var id = t[0][0].key;
+	    if(id === "color") { id = nextId++; }
+	    newCompanies.push({ id: id,
+				color: t[0][0].value,
+				name: t[1][0].value,
+				address: t[2][0].value,
+				bank: t[3][0].value,
+				iban: t[4][0].value,
+				bic: t[5][0].value });
+	});
+	if(datastorage.write("teams", { teams: newTeams }) === false) {
+	    framework.servicelog("Updating teams database failed");
+	} else {
+	    framework.servicelog("Updated teams database");
+	}
+	if(datastorage.write("company", { nextId: nextId, company: newCompanies }) === false) {
+	    framework.servicelog("Updating companies database failed");
+	} else {
+	    framework.servicelog("Updated companies database");
+	}
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+    }
+    sendCustomersMainData(cookie);
 }
 
 
@@ -1611,9 +1725,9 @@ if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 function initializeDataStorages() {
     framework.initializeDataStorages();
 
-    datastorage.initialize("customers", { customers: [] }, true);
-    datastorage.initialize("invoices", { invoices: [] }, true);
-    datastorage.initialize("company", { company: [] }, true);
+    datastorage.initialize("customers", { nextId: 1, customers: [] }, true);
+    datastorage.initialize("invoices", { nextId: 1, invoices: [] }, true);
+    datastorage.initialize("company", { nextId: 1, company: [] }, true);
     datastorage.initialize("teams", { teams: [] }, true);
 
     var mainConfig = datastorage.read("main").main;
