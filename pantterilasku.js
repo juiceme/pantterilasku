@@ -20,8 +20,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processResetToMainState(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getTeamsDataForEdit") {
 	processGetTeamsDataForEdit(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "getCustomersDataForEdit") {
-	processGetCustomersDataForEdit(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getPlayerDataForEdit") {
+	processGetplayerDataForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getInvoicesForEdit") {
 	processGetInvoicesForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "itemCountSelectorClicked") {
@@ -34,8 +34,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllTeamsData") {
 	processSaveAllTeamsData(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "saveAllCustomersData") {
-	processSaveAllCustomersData(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "savePlayerData") {
+	processSavePlayerData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllInvoiceData") {
 	processSaveAllInvoiceData(cookie, decryptedMessage.content); }
 
@@ -106,7 +106,7 @@ function createDefaultPriviliges() {
 function createTopButtonList(cookie) {
     return [ { button: { text: "Muokkaa Joukkueita", callbackMessage: "getTeamsDataForEdit" },
 	       priviliges: [ "teams-edit" ] },
-	     { button: { text: "Muokkaa Asiakkaita", callbackMessage: "getCustomersDataForEdit" },
+	     { button: { text: "Muokkaa Pelaajia", callbackMessage: "getPlayerDataForEdit" },
 	       priviliges: [ "customer-edit" ] },
 	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
 	       priviliges: [ "invoice-edit" ] } ];
@@ -386,34 +386,29 @@ function processSaveAllTeamsData(cookie, content) {
 }
 
 
-// Customers data editing
+// Player data editing
 
-function processGetCustomersDataForEdit(cookie, content) {
-    framework.servicelog("Client #" + cookie.count + " requests customers edit");
+function processGetplayerDataForEdit(cookie, content) {
+    framework.servicelog("Client #" + cookie.count + " requests player edit");
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
 	var topButtonList = framework.createTopButtons(cookie);
 	var items = [];
-	var customers = [];
+	var players = [];
 	teams = getTeams(cookie);
 	if(teams.length !== 0) {
 	    teams.forEach(function(t) {
-		customers = customers.concat(getTeamPlayers(t));
+		players = players.concat(getTeamPlayers(t));
 	    });
 	}
-
-	console.log("TEAMS: " + JSON.stringify(teams))
-	console.log("CUSTOMERS: " + JSON.stringify(customers))
-	
-	customers.forEach(function(c) {
-	    items.push([ [ framework.createUiInputField(c.id, c.name, 15, false) ],
-			 [ framework.createUiInputField("address", c.address, 15, false) ],
-			 [ framework.createUiInputField("detail", c.detail, 15, false) ],
-			 [ framework.createUiInputField("email", c.email, 15, false) ],
-			 [ framework.createUiInputField("bankref", c.bankReference, 16, false) ],
-			 [ framework.createUiSelectionList("team", teams, c.team, true, false, false) ] ]);
+	players.forEach(function(p) {
+	    items.push([ [ framework.createUiInputField(p.id, p.name, 15, false) ],
+			 [ framework.createUiInputField("address", p.address, 15, false) ],
+			 [ framework.createUiInputField("detail", p.detail, 15, false) ],
+			 [ framework.createUiInputField("email", p.email, 15, false) ],
+			 [ framework.createUiInputField("bankref", p.reference, 16, false) ],
+			 [ framework.createUiSelectionList("team", teams, p.team, true, false, false) ] ]);
 	});
-
-	var itemList = { title: "Customers",
+	var itemList = { title: "Players",
 			 frameId: 0,
 			 header: [ [ [ framework.createUiHtmlCell("", "") ],
 				     [ framework.createUiHtmlCell("", "<b>Name</b>") ],
@@ -429,49 +424,58 @@ function processGetCustomersDataForEdit(cookie, content) {
 				    [ framework.createUiInputField("email", "", 15, false) ],
 				    [ framework.createUiInputField("bankref", "", 16, false) ],
 				    [ framework.createUiSelectionList("team", teams, 1, true, false, false) ] ] };
-
 	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
-	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllCustomersData" },
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "savePlayerData" },
 			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
-
 	var sendable = { type: "createUiPage",
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
 	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("Sent customer data to client #" + cookie.count);
+	framework.servicelog("Sent player data to client #" + cookie.count);
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
-function processSaveAllCustomersData(cookie, content) {
+function processSavePlayerData(cookie, content) {
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
-	// reset visibility/selection mappings as customers may change...
+	// reset visibility/selection mappings as players may change...
 	mainDataVisibilityMap = []; 
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
-	var newCustomers = [];
-	var nextId = datastorage.read("customers").nextId;
+	var updatedPlayers = [];
+	var nextId = datastorage.read("players").nextId;
 	content.items[0].frame.forEach(function(c) {
 	    var id = c[0][0].key;
 	    if(id === "name") { id = nextId++; }
-	    newCustomers.push({ id: id,
-				name: c[0][0].value,
-				address: c[1][0].value,
-				detail: c[2][0].value,
-				email: c[3][0].value,
-				bankReference: c[4][0].value,
-				team: c[5][0].selected });
+	    updatedPlayers.push({ id: id,
+				  name: c[0][0].value,
+				  address: c[1][0].value,
+				  detail: c[2][0].value,
+				  email: c[3][0].value,
+				  reference: c[4][0].value,
+				  team: c[5][0].selected });
 	});
-	if(datastorage.write("customers", { nextId: nextId, customers: newCustomers }) === false) {
-	    framework.servicelog("Updating customers database failed");
+	var newPlayers = [];
+	datastorage.read("players").players.forEach(function(p) {
+	    if(!teams.map(function(t) {
+		return (t === p.team);
+	    }).filter(function(f){ return f; })[0]) {
+		newPlayers.push(p);
+	    }
+	});
+	updatedPlayers.forEach(function(u) {
+	    newPlayers.push(u);
+	});
+	if(datastorage.write("players", { nextId: nextId, players: newPlayers }) === false) {
+	    framework.servicelog("Updating players database failed");
 	} else {
-	    framework.servicelog("Updated customers database");
+	    framework.servicelog("Updated players database");
 	}
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
     }
     sendMainInvoicingPanel(cookie);
 }
@@ -1690,7 +1694,7 @@ function updateDatabaseVersionTo_1() {
     var newAccessConfig = [];
     userConfig.forEach(function(u) {
 	newAccessConfig.push({ username: u.username,
-			       teams: u.applicationData.teams,
+			       teams: u.applicationData.teams[0],
 			       emailText: u.applicationData.emailText });
     });
     if(datastorage.write("access", { access: newAccessConfig }) === false) {
