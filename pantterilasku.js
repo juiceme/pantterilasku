@@ -38,7 +38,10 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processSavePlayerData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllInvoiceData") {
 	processSaveAllInvoiceData(cookie, decryptedMessage.content); }
-
+    if(decryptedMessage.type === "sendInvoicesByEmail") {
+	processSendInvoicesByEmail(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "downloadInvoices") {
+	processDownloadInvoices(cookie, decryptedMessage.content); }
 }
 
 
@@ -174,12 +177,22 @@ function sendMainInvoicingPanel(cookie) {
 			header: [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] ],
 			items: createInvoiceTable(invoices, mainInvoiceMap) };
 
+    var emailList = { title: "Sähköpostin saateteksti",
+		      frameId: 2,
+		      header: [ [] ],
+		      items: [ [ [ framework.createUiTextArea("emailText", emailText, 80, 5) ] ] ] };
+
+    var buttonList = [ { id: 501, text: "Lähetä laskut sähköpostilla!", callbackMessage: "sendInvoicesByEmail" },
+		       { id: 502, text: "Lataa laskut zippitiedostona",  callbackMessage: "downloadInvoices" } ];
+
     var frameList = [ { frameType: "fixedListFrame", frame: playerList },
-		      { frameType: "fixedListFrame", frame: invoiceList } ];
+		      { frameType: "fixedListFrame", frame: invoiceList },
+		      { frameType: "fixedListFrame", frame: emailList } ];
 
     sendable = { type: "createUiPage",
 		 content: { topButtonList: topButtonList,
-			    frameList: frameList } };
+			    frameList: frameList,
+			    buttonList: buttonList } };
 
     framework.sendCipherTextToClient(cookie, sendable);
     framework.servicelog("Sent NEW customerMainData to client #" + cookie.count);
