@@ -160,6 +160,10 @@ function sendMainInvoicingPanel(cookie) {
 	}
     }
 
+    var emailText = datastorage.read("access").access.map(function(a) {
+	if(a.username === cookie.user.username) { return a.emailText; }
+    }).filter(function(f){ return f; })[0];
+	
     var playerList = { title: "Pelaajat",
 		       frameId: 0,
 		       header: fillHeaderRows(players, mainDataVisibilityMap, mainDataSelectionMap),
@@ -573,82 +577,6 @@ function getniceDateTime(date) {
 	    date.getHours().toString() + date.getMinutes().toString());
 }
 
-
-function printLanguageVariable(tag, language) {
-    return "var " + tag + " = \"" + getLanguageText(language, tag) + "\";"
-}
-
-function getClientVariables(language) {
-    var language = mainConfig.main.language;
-    return "var WEBSOCK_PORT = " + mainConfig.main.port + ";\n" +
-	printLanguageVariable("HELPTEXT_LOGIN_A", language) + "\n" +
-	printLanguageVariable("HELPTEXT_LOGIN_B", language) + "\n" +
-	printLanguageVariable("HELPTEXT_LOGIN_C", language) + "\n" +
-	printLanguageVariable("HELPTEXT_EMAIL_A", language) + "\n" +
-	printLanguageVariable("HELPTEXT_EMAIL_B", language) + "\n" +
-	printLanguageVariable("HELPTEXT_USER_A", language) + "\n" +
-	printLanguageVariable("HELPTEXT_USER_B", language) + "\n" +
-	printLanguageVariable("HELPTEXT_USER_C", language) + "\n" +
-	printLanguageVariable("HELPTEXT_USER_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_LOGIN_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_LOGIN_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_LOGIN_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_LOGIN_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_LOGIN_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EMAIL_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EMAIL_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EMAIL_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EMAIL_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EMAIL_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_F", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_G", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_H", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_I", language) + "\n" +
-	printLanguageVariable("UI_TEXT_CONFIG_J", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_F", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_G", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_H", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_I", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_J", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_K", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_L", language) + "\n" +
-	printLanguageVariable("UI_TEXT_MAIN_M", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_F", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_G", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_H", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_I", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_CUSTOMER_J", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_E", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_F", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_G", language) + "\n" +
-	printLanguageVariable("UI_TEXT_EDIT_INVOICE_H", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_A", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_B", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_C", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_D", language) + "\n" +
-	printLanguageVariable("UI_TEXT_ALERT_E", language) + "\n\n";
-}
-
-
 function stateIs(cookie, state) {
     return (cookie.state === state);
 }
@@ -656,75 +584,6 @@ function stateIs(cookie, state) {
 function setState(cookie, state) {
     cookie.state = state;
 }
-
-function processClientStarted(cookie) {
-    if(cookie["user"] !== undefined) {
-	if(cookie.user["username"] !== undefined) {
-	    servicelog("User " + cookie.user.username + " logged out");
-	}
-    }
-    servicelog("Sending initial login view to client #" + cookie.count);
-    setState(cookie, "clientStarted");
-    cookie.aesKey = "";
-    cookie.user = {};
-    cookie.challenge = "";
-    var sendable = { type: "loginView" }
-    sendPlainTextToClient(cookie, sendable);
-    setStatustoClient(cookie, "Login");
-}
-
-function processUserLogin(cookie, content) {
-    var sendable;
-    if(!content.username) {
-	servicelog("Illegal user login message");
-	processClientStarted(cookie);
-	return;
-    } else {
-	var user = getUserByHashedName(content.username);
-	if(user.length === 0) {
-	    servicelog("Unknown user login attempt");
-	    processClientStarted(cookie);
-	    return;
-	} else {
-	    cookie.user = user[0];
-	    cookie.aesKey = user[0].password;
-	    servicelog("User " + user[0].username + " logging in");
-	    var plainChallenge = getNewChallenge();
-	    servicelog("plainChallenge:   " + plainChallenge);
-	    cookie.challenge = JSON.stringify(plainChallenge);
-	    sendable = { type: "loginChallenge",
-			 content: plainChallenge };
-	    sendCipherTextToClient(cookie, sendable);
-	}
-    }
-}
-
-function processLoginResponse(cookie, content) {
-    var sendable;
-    var plainResponse = Aes.Ctr.decrypt(content, cookie.user.password, 128);
-    if(cookie.challenge === plainResponse) {
-	servicelog("User login OK");
-	setState(cookie, "loggedIn");
-	setStatustoClient(cookie, "Login OK");
-	if(getUserPriviliges(cookie.user).length === 0) {
-	    sendable = { type: "unpriviligedLogin",
-			 content: getLanguageText(mainConfig.main.language, "HELPTEXT_UNPRIVILIGED_A") };
-
-	    sendCipherTextToClient(cookie, sendable);
-	    servicelog("Sent unpriviligedLogin info to client #" + cookie.count);
-	} else {
-	    cookie.invoiceData = createUserInvoiceData(cookie.user);
-            sendable = { type: "invoiceData",
-			 content: cookie.invoiceData };
-	    sendCipherTextToClient(cookie, sendable);
-	    servicelog("Sent invoiceData to client #" + cookie.count);
-	}
-    } else {
-	servicelog("User login failed on client #" + cookie.count);
-	processClientStarted(cookie);
-    }
-}
-
 
 function processSaveCustomerList(cookie, content) {
     var sendable;
@@ -750,22 +609,6 @@ function processSaveInvoiceList(cookie, content) {
 	cookie.invoiceData = createUserInvoiceData(cookie.user);
     } else {
 	servicelog("user has insufficent priviliges to edit invoice tables");
-    }
-    sendable = { type: "invoiceData", content: cookie.invoiceData };
-    sendCipherTextToClient(cookie, sendable);
-    servicelog("Sent invoiceData to client #" + cookie.count);
-}
-
-function processSaveAdminData(cookie, content) {
-    var sendable;
-    var adminData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests admin data saving: " + JSON.stringify(adminData));
-    if(userHasSysAdminPrivilige(cookie.user)) {
-	updateAdminDataFromClient(cookie, adminData);
-	cookie.user = getUserByUserName(cookie.user.username)[0];
-	cookie.invoiceData = createUserInvoiceData(cookie.user);
-    } else {
-	servicelog("user has insufficent priviliges to edit admin data");
     }
     sendable = { type: "invoiceData", content: cookie.invoiceData };
     sendCipherTextToClient(cookie, sendable);
@@ -801,18 +644,7 @@ function processDownloadInvoices(cookie, content) {
     downloadInvoicesToClient(cookie, invoiceData);
 }
 
-function processAdminMode(cookie, content) {
-    servicelog("Client #" + cookie.count + " requests Sytem Administration priviliges");
-    if(userHasSysAdminPrivilige(cookie.user)) {
-	servicelog("Granted Sytem Administration priviliges to user " + cookie.user.username);
-	sendable = { type: "adminData",
-		     content: createAdminData(cookie) };
-	sendCipherTextToClient(cookie, sendable);
-	servicelog("Sent adminData to client #" + cookie.count);
-    } else {
-	servicelog("user " + cookie.user.username + " does not have Sytem Administration priviliges!");
-	processClientStarted(cookie);
-    }	
+function processSendInvoicesByEmail(cookie, content) {
 }
 
 function processHelpScreen(cookie, content) {
@@ -820,13 +652,13 @@ function processHelpScreen(cookie, content) {
     servicelog("Client #" + cookie.count + " requests help screen (mode : " + JSON.stringify(content) + " )");
     if(content.mode === "user") {
 	sendable = { type: "helpText",
-		     content: fs.readFileSync("./" + getLanguageText(mainConfig.main.language, 
+		     content: fs.readFileSync("./" + framework.getLanguageText(cookie, 
 								     "HELPFILE_USER"))
 		     .toString("base64") };
 	sendCipherTextToClient(cookie, sendable);
     } else {
 	sendable = { type: "helpText",
-		     content: fs.readFileSync("./" + getLanguageText(mainConfig.main.language,
+		     content: fs.readFileSync("./" + framework.getLanguageText(cookie,
 								     "HELPFILE_ADMIN"))
 		     .toString("base64") };
 	sendCipherTextToClient(cookie, sendable);
@@ -1126,131 +958,6 @@ function updateInvoicesFromClient(cookie, invoices) {
     }
 }
 
-function updateAdminDataFromClient(cookie, adminData) {
-    if(datastorage.write("users", { users: adminData.users }) === false) {
-	servicelog("User database write failed");
-    } else {
-	servicelog("Updated User database: " + JSON.stringify(adminData.users));
-    }
-    if(datastorage.write("company", { company: adminData.companies }) === false) {
-	servicelog("Company database write failed");
-    } else {
-	servicelog("Updated Company database: " + JSON.stringify(adminData.companies));
-    }
-}
-
-function processCreateAccount(cookie, accountDefaults, content) {
-    var sendable;
-    servicelog("temp passwd: " + JSON.stringify(cookie.aesKey));
-    var account = JSON.parse(Aes.Ctr.decrypt(content, cookie.aesKey, 128));
-
-    if(typeof(account) !== "object") {
-	servicelog("Received illegal account creation data");
-	return false;
-    }
-    if(account["username"] === undefined) {
-	servicelog("Received account creation data without username");
-	return false;
-    }
-
-    if(stateIs(cookie, "newUserValidated")) {
-	servicelog("Request for new user: [" + account.username + "]");
-	if(!createAccount(account, accountDefaults)) {
-	    servicelog("Cannot create account " + account.username);
-	    // there are more possible reasons than already existing account, however user needs
-	    // not know about that, hence display only "Account already exists!" in client...
-	    setStatustoClient(cookie, "Account already exists!");
-	    sendable = { type: "createNewAccount" };
-	    sendPlainTextToClient(cookie, sendable);
-	    return;
-	} else {
-	    processClientStarted(cookie);
-	    setStatustoClient(cookie, "Account created!");
-	    var emailSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_CONFIRM_SUBJECT");
-	    var emailAdminSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_CONFIRM_ADMIN_SUBJECT");
-	    var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-							   "NEW_ACCOUNT_CONFIRM_GREETING"),
-					   account.username,
-					   mainConfig.main.siteFullUrl);
-	    var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-								"NEW_ACCOUNT_CONFIRM_ADMIN_GREETING"),
-						account.username);
-
-	    var mailDetailsUser = { text: emailBody,
-				    from: datastorage.read("email").sender,
-				    to: account.email,
-				    subject: emailSubject };
-
-	    var mailDetailsAdmin = { text: emailAdminBody,
-				     from: datastorage.read("email").sender,
-				     to: mainConfig.main.adminEmailAddess,
-				     subject: emailAdminSubject };
-
-	    sendEmail(cookie, mailDetailsUser, false, "account creation", false, false);
-	    sendEmail(cookie, mailDetailsAdmin, false, "account creation", false, false);
-
-	    return;
-	}
-    }
-    if(stateIs(cookie, "oldUserValidated")) {
-	servicelog("Request account change for user: [" + account.username + "]");
-	var user = getUserByUserName(account.username);
-	if(user.length === 0) {
-	    processClientStarted(cookie);
-	    setStatustoClient(cookie, "Illegal user operation!");
-	    return;
-	} else {
-	    if(updateUserAccount(cookie, account)) {
-		setStatustoClient(cookie, "Account updated!");
-	    } else {
-		setStatustoClient(cookie, "Account update failed!");
-	    }
-	    processClientStarted(cookie);
-	    return;
-	}
-    }
-}
-
-function processConfirmEmail(cookie, content) {
-    servicelog("Request for email verification: [" + content + "]");
-    sendVerificationEmail(cookie, content);
-    processClientStarted(cookie);
-    setStatustoClient(cookie, "Email sent!");
-}
-
-function processValidateAccount(cookie, content) {
-    if(!content.email || !content.challenge) {
-	servicelog("Illegal validate account message");
-	processClientStarted(cookie);
-	return;
-    } else {
-	servicelog("Validation code: " + JSON.stringify(content));
-	account = validateAccountCode(content.email.toString());
-	if((account !== false) && (Aes.Ctr.decrypt(content.challenge, account.token.key, 128)
-				   === "clientValidating")) {
-	    setState(cookie, "newUserValidated");
-	    setStatustoClient(cookie, "Validation code correct!");
-	    cookie.aesKey = account.token.key;
-	    var newAccount = {email: account.email};
-	    var user = getUserByEmail(account.email);
-	    if(user.length !== 0) {
-		newAccount.username = user[0].username;
-		newAccount.realname = user[0].realname;
-		newAccount.phone = user[0].phone;
-		setState(cookie, "oldUserValidated");
-	    }
-	    sendable = { type: "createNewAccount",
-			 content: newAccount };
-	    sendCipherTextToClient(cookie, sendable);
-	    return;
-	} else {
-	    processClientStarted(cookie);
-	    setStatustoClient(cookie, "Validation code failed!");
-	    return;
-	}
-    }
-}
-
 function readUserData() {
     userData = datastorage.read("users");
     if(userData === false) {
@@ -1258,55 +965,6 @@ function readUserData() {
     } 
     return userData;
  }
-
-function updateUserAccount(cookie, account) {
-    var userData = readUserData();
-    var oldUserAccount = getUserByUserName(account.username);
-    if(oldUserAccount.length === 0) {
-	return false;
-    } else {
-	var newUserData = { users: [] };
-	newUserData.users = userData.users.filter(function(u) {
-	    return u.username !== account.username;
-	});
-	var newUserAccount = { username: account.username,
-			       hash: sha1.hash(account.username),
-			       password: account.password,
-			       applicationData: oldUserAccount[0].applicationData };
-	if(account["realname"] !== undefined) { newUserAccount.realname = account.realname; }
-	if(account["email"] !== undefined) { newUserAccount.email = account.email; }
-	if(account["phone"] !== undefined) { newUserAccount.phone = account.phone; }
-	newUserData.users.push(newUserAccount);
-	if(datastorage.write("users", newUserData) === false) {
-	    servicelog("User database write failed");
-	} else {
-	    servicelog("Updated User Account: " + JSON.stringify(newUserAccount));
-	}
-	var emailSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_CONFIRM_SUBJECT");
-	var emailAdminSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_CONFIRM_ADMIN_SUBJECT");
-	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-						       "PASSWORD_RESET_CONFIRM_GREETING"),
-				       account.username,
-				       mainConfig.main.siteFullUrl);
-	var emailAdminBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-							    "PASSWORD_RESET_CONFIRM_ADMIN_GREETING"),
-					    account.username);
-
-	var mailDetailsUser = { text: emailBody,
-				from: datastorage.read("email").sender,
-				to: account.email,
-				subject: emailSubject };
-
-	var mailDetailsAdmin = { text: emailAdminBody,
-				 from: datastorage.read("email").sender,
-				 to: mainConfig.main.adminEmailAddess,
-				 subject: emailAdminSubject };
-
-	sendEmail(cookie, mailDetailsUser, false, "account update", false, false);
-	sendEmail(cookie, mailDetailsAdmin, false, "account update", false, false);
-	return true;
-    }
-}
 
 function userHasCustomerEditPrivilige(user) {
     if(user.applicationData.priviliges.length === 0) { return false; }
@@ -1326,12 +984,6 @@ function userHasSendEmailPrivilige(user) {
     return true;
 }
 
-function userHasSysAdminPrivilige(user) {
-    if(user.applicationData.priviliges.length === 0) { return false; }
-    if(user.applicationData.priviliges.indexOf("system-admin") < 0) { return false; }
-    return true;
-}
-
 function getUserPriviliges(user) {
     if(user.applicationData.priviliges.length === 0) { return []; }
     if(user.applicationData.priviliges.indexOf("none") > -1) { return []; }
@@ -1347,12 +999,6 @@ function getUserByUserName(username) {
 function getUserByEmail(email) {
     return readUserData().users.filter(function(u) {
 	return u.email === email;
-    });
-}
-
-function getUserByHashedName(hash) {
-    return readUserData().users.filter(function(u) {
-	return u.hash === hash;
     });
 }
 
@@ -1383,88 +1029,6 @@ function createAccount(account, accountDefaults) {
 	    return true;
 	}
     }
-}
-
-function validateAccountCode(code) {
-    var pendingUserData = datastorage.read("pending");
-    if(Object.keys(pendingUserData.pending).length === 0) {
-	servicelog("Empty pending requests database, bailing out");
-	return false;
-    } 
-    var target = pendingUserData.pending.filter(function(u) {
-	return u.token.mail === code.slice(0, 8);
-    });
-    if(target.length === 0) {
-	return false;
-    } else {
-	var newPendingUserData = { pending: [] };
-	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
-	    return u.token.mail !== code.slice(0, 8);
-	});
-
-	if(datastorage.write("pending", newPendingUserData) === false) {
-	    servicelog("Pending requests database write failed");
-	} else {
-	    servicelog("Removed pending request from database");
-	}
-	return target[0];
-    }
-}
-
-function removePendingRequest(cookie, emailAdress) {
-    var pendingUserData = datastorage.read("pending");
-    if(Object.keys(pendingUserData.pending).length === 0) {
-	servicelog("Empty pending requests database, bailing out");
-	return;
-    }
-    if(pendingUserData.pending.filter(function(u) {
-	return u.email === emailAdress;
-    }).length !== 0) {
-	servicelog("Removing duplicate entry from pending database");
-	var newPendingUserData = { pending: [] };
-	newPendingUserData.pending = pendingUserData.pending.filter(function(u) {
-            return u.email !== emailAdress;
-	});
-	if(datastorage.write("pending", newPendingUserData) === false) {
-            servicelog("Pending requests database write failed");
-	}
-    } else {
-	servicelog("no duplicate entries in pending database");
-    }
-}
-
-function sendVerificationEmail(cookie, recipientAddress) {
-    removePendingRequest(cookie, recipientAddress);
-    var pendingData = datastorage.read("pending");
-    var timeout = new Date();
-    var emailToken = generateEmailToken(recipientAddress);
-    timeout.setHours(timeout.getHours() + 24);
-    var request = { email: recipientAddress,
-                    token: emailToken,
-                    date: timeout.getTime() };
-    pendingData.pending.push(request);
-    if(datastorage.write("pending", pendingData) === false) {
-	servicelog("Pending database write failed");
-    }
-    if(getUserByEmail(recipientAddress).length === 0) {
-	var emailSubject = getLanguageText(mainConfig.main.language, "NEW_ACCOUNT_REQUEST_SUBJECT");
-	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-						       "NEW_ACCOUNT_REQUEST_GREETING"),
-				       (request.token.mail + request.token.key));
-    } else {
-	var emailSubject = getLanguageText(mainConfig.main.language, "PASSWORD_RESET_SUBJECT");
-	var emailBody = fillTagsInText(getLanguageText(mainConfig.main.language,
-						       "PASSWORD_RESET_GREETING"),
-				       getUserByEmail(recipientAddress)[0].username,
-				       (request.token.mail + request.token.key));
-    }
-
-    var mailDetails = { text: emailBody,
-			from: datastorage.read("email").sender,
-			to: recipientAddress,
-			subject: emailSubject };
-
-    sendEmail(cookie, mailDetails, false, "account verification", false, false);
 }
 
 function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, billNumber) {
@@ -1550,11 +1114,6 @@ function pushSentEmailZipToClient(cookie, billNumber) {
     });
 }
 
-function generateEmailToken(email) {
-    return { mail: sha1.hash(email).slice(0, 8),
-	     key: sha1.hash(globalSalt + JSON.stringify(new Date().getTime())).slice(0, 16) };
-}
-
 function getNewChallenge() {
     return ("challenge_" + sha1.hash(globalSalt + new Date().getTime().toString()) + "1");
 }
@@ -1593,11 +1152,6 @@ function createUserInvoiceData(user) {
 	     priviliges: user.applicationData.priviliges };
 }
 
-function createAdminData(cookie) {
-    return { users: datastorage.read("users").users,
-	     companies: datastorage.read("company").company };
-}
-
 
 // ---------
 
@@ -1615,52 +1169,6 @@ function sortByKey(array, key) {
         return ((x < y) ? -1 : ((x > y) ? 1 : 0));
     });
 }
-
-function getLanguageText(language, tag) {
-    var langData = datastorage.read("language");
-    var langIndex = langData.language.indexOf(language);
-    if(++langIndex === 0) { return false; }
-    if(langData.substitution.filter(function(f) { return f.tag === tag }).length === 0) { return false; }
-    return langData.substitution.filter(function(f) { return f.tag === tag })[0]["LANG" + langIndex];
-}
-
-function fillTagsInText(text) {
-    for(var i = 1; i < arguments.length; i++) {
-	var substituteString = "_SUBSTITUTE_TEXT_" + i + "_";
-	text = text.replace(substituteString, arguments[i]);
-    }
-    return text;
-}
-
-setInterval(function() {
-    var now = new Date().getTime();
-    var pendingUserData = datastorage.read("pending");
-    if(Object.keys(pendingUserData.pending).length === 0) {
-	servicelog("No pending requests to purge");
-	return;
-    }
-    
-    var purgeCount = 0
-    var newPendingUserData = { pending: [] };
-    pendingUserData.pending.forEach(function(r) {
-	if(r.date < now) {
-	    purgeCount++;
-	} else {
-	    newPendingUserData.pending.push(r);
-	}
-    });
-
-    if(purgeCount === 0) {
-	servicelog("No pending requests timeouted");
-	return;
-    } else {
-	if(datastorage.write("pending", newPendingUserData) === false) {
-	    servicelog("Pending requests database write failed");
-	} else {
-	    servicelog("Removed " + purgeCount + " timeouted pending requests");
-	}
-    }
-}, 1000*60*60);
 
 
 // database conversion and update
