@@ -42,6 +42,13 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processSendInvoicesByEmail(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "downloadInvoices") {
 	processDownloadInvoices(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "confirmResponse") {
+	if(decryptedMessage.content.confirmId === "confirm_email_sending") {
+	    processConfirmedEmailSending(cookie, decryptedMessage.content);
+	} else {
+	    framework.servicelog("Received undefined confirm response");
+	}
+    }
 }
 
 
@@ -195,7 +202,6 @@ function sendMainInvoicingPanel(cookie) {
 			    buttonList: buttonList } };
 
     framework.sendCipherTextToClient(cookie, sendable);
-    framework.servicelog("Sent NEW customerMainData to client #" + cookie.count);
 }
 
 function fillHeaderRows(customers, vMap, sMap) {
@@ -211,7 +217,7 @@ function createInvoiceTable(invoices, iMap) {
     var count = 1;
     while(count < 7) {
 	items.push([ [ framework.createUiTextNode("number", count) ],
-		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.description; }), iMap[count], true, false, true,
+		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.id + ". " + i.description; }), iMap[count], true, false, true,
 						       "var nSelection = document.getElementById(this.id); sendToServerEncrypted('invoiceSelectorSelected', { id: " + count + ", state: nSelection.options[nSelection.selectedIndex].item })") ] ] );
 	count ++;
     }
@@ -222,7 +228,7 @@ function fillCustomerRows(customers, vMap, sMap) {
     var count = 8
     var items = [];
     customers.forEach(function(c) {
-	items.push( [ [ framework.createUiTextNode("name", c.name) ],  [ framework.createUiTextNode("team", c.team) ],
+	items.push( [ [ framework.createUiTextNode(c.id, c.name) ],  [ framework.createUiTextNode("team", c.team) ],
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
@@ -658,6 +664,49 @@ function processDownloadInvoices(cookie, content) {
 }
 
 function processSendInvoicesByEmail(cookie, content) {
+    var playerList = []
+    content.items[0].frame.forEach(function(p) {
+	var itemLine = [];
+	var flag = false
+	itemLine.push(p[0][0].key);
+	if(p[2][0].checked) { itemLine.push(p[2][1].selected); flag = true; } else { itemLine.push(0); }
+	if(p[3][0].checked) { itemLine.push(p[3][1].selected); flag = true; } else { itemLine.push(0); }
+	if(p[4][0].checked) { itemLine.push(p[4][1].selected); flag = true; } else { itemLine.push(0); }
+	if(p[5][0].checked) { itemLine.push(p[5][1].selected); flag = true; } else { itemLine.push(0); }
+	if(p[6][0].checked) { itemLine.push(p[6][1].selected); flag = true; } else { itemLine.push(0); }
+	if(p[7][0].checked) { itemLine.push(p[7][1].selected); flag = true; } else { itemLine.push(0); }
+	itemLine.push(p[8][0].selected);
+	if(flag) {
+	    playerList.push(itemLine)
+	}
+    });
+    var itemList = []
+    content.items[1].frame.forEach(function(i) {
+	itemList.push(i[1][0].selected);
+    });
+    var emailText = content.items[2].frame[0][0][0].value
+
+    // Save the list to cookie.applicationData while showing the confirnmation popup.
+    cookie.user.applicationData.invoices = { players: playerList,
+					     items: itemList,
+					     emailText: emailText };
+    
+    var confirmText = "Olet lähettämässä " +
+	playerList.length + " laskua sähköpostilla.\nHaluatko jatkaa?"
+    sendable = { type: "confirmBox",
+		 content: { confirmId: "confirm_email_sending",
+			    confirmText: confirmText } };
+    framework.sendCipherTextToClient(cookie, sendable);
+}
+
+function processConfirmedEmailSending(cookie, content) {
+    // when confirm popup has been clicked
+    if(content.result) {
+	console.log(JSON.stringify(cookie.user.applicationData.invoices))
+    } else {
+	cookie.user.applicationData.invoices = {};
+	framework.servicelog("User has cancelled sending invoice emails");
+    }
 }
 
 function processHelpScreen(cookie, content) {
