@@ -51,17 +51,17 @@ function printHeader(doc, bill) {
 
     // Variable textfields
     doc.fontSize(11).font('Times-Bold')
-	.text(bill.companyName, 60, 36);
+	.text(bill.teamName, 60, 36);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.companyAddress, 60, 48);
+	.text(bill.teamAddress, 60, 48);
     doc.fontSize(11).font('Times-Bold')
-	.text(bill.customerName, 64, 120);
+	.text(bill.playerName, 64, 120);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.customerAddress, 64, 134);
-    if(bill.customerDetail) {
-	var spacing = bill.customerAddress.split(/\r\n|\r|\n/).length * 12
+	.text(bill.playerAddress, 64, 134);
+    if(bill.playerDetail) {
+	var spacing = bill.playerAddress.split(/\r\n|\r|\n/).length * 12
 	doc.fontSize(11).font('Times-Italic')
-	    .text("(" + bill.customerDetail + ")", 64, 136 + spacing);
+	    .text("(" + bill.playerDetail + ")", 64, 136 + spacing);
     }
 
     doc.fontSize(8).font('Times-Roman')
@@ -77,14 +77,14 @@ function printItemList(doc, itemList) {
     var yposition = itemListStartYValue;
     // loop thru the product array
     itemList.forEach( function(s) {
-	var price = parseInt(s.n) * parseFloat(s.price);
-	var vatPrice = price + price * parseFloat(s.vat) / 100;
+	var price = parseInt(s.count) * parseFloat(s.invoice.price);
+	var vatPrice = price + price * parseFloat(s.invoice.vat) / 100;
 	doc.fontSize(8)
-	    .text(s.description, 65, yposition)
-	    .text(s.n, 344, yposition)
+	    .text(s.invoice.description, 65, yposition)
+	    .text(s.count, 344, yposition)
 	    .text("kpl", 373, yposition)
-	    .text(s.price, 415, yposition)
-	    .text(s.vat, 493, yposition)
+	    .text(s.invoice.price, 415, yposition)
+	    .text(s.invoice.vat, 493, yposition)
 	    .text(vatPrice.toFixed(2), 530, yposition);
 	yposition = yposition + 12;
     });
@@ -126,17 +126,17 @@ function printFooter(doc, bill, total) {
 
     // Variable textfields
     doc.fontSize(7).font('Times-Roman')
-	.text(bill.companyName, 57, 522)
-	.text(bill.bankName, 445, 530)
+	.text(bill.teamName, 57, 522)
+	.text(bill.bank, 445, 530)
 	.text(("IBAN " + bill.iban), 445, 538)
 	.text(("BIC " + bill.bic), 445, 546);
 
     doc.fontSize(10).font('Times-Roman')
-	.text((bill.bankName + "    " + bill.iban), 84, 592)
+	.text((bill.bank + "    " + bill.iban), 84, 592)
 	.text(bill.bic, 323, 592)
-	.text(bill.companyName, 84, 623)
-	.text(bill.customerName, 84, 656)
-	.text(bill.customerAddress, 84, 668)
+	.text(bill.teamName, 84, 623)
+	.text(bill.playerName, 84, 656)
+	.text(bill.playerAddress, 84, 668)
 	.text(bill.reference, 360, 732)
 	.text(bill.expireDate, 360, 756)
 	.text(total.toFixed(2), 540, 756);
@@ -166,9 +166,10 @@ function printSheet(callback, connectionIndex, details, filename, billData, item
     printItemList(doc, itemList);
 
     // Draw the totals bar
-    var totalNoVat = itemList.map(function(s){return(parseInt(s.n)*parseFloat(s.price))})
+    var totalNoVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.invoice.price))})
 	.reduce(function(a, b){return a + b;});
-    var totalVat = itemList.map(function(s){return(parseInt(s.n)*parseFloat(s.price)*parseFloat(s.vat)/100)})
+    var totalVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.invoice.price)*
+						   parseFloat(s.invoice.vat)/100)})
 	.reduce(function(a, b){return a + b;});
     printTotalsBar(doc, itemList.length, billData.reference, totalNoVat, totalVat);
 
