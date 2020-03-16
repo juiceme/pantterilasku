@@ -588,12 +588,6 @@ function processSaveAllInvoiceData(cookie, content) {
     sendMainInvoicingPanel(cookie);
 }
 
-
-
-
-
-
-
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
 }
@@ -609,36 +603,6 @@ function stateIs(cookie, state) {
 
 function setState(cookie, state) {
     cookie.state = state;
-}
-
-function processSaveCustomerList(cookie, content) {
-    var sendable;
-    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests customer list saving: " + JSON.stringify(invoiceData.customers));
-    if(userHasCustomerEditPrivilige(cookie.user)) {
-	updateCustomersFromClient(cookie, invoiceData.customers);
-	cookie.invoiceData = createUserInvoiceData(cookie.user);
-    } else {
-	servicelog("user has insufficent priviliges to edit customer tables");
-    }
-    sendable = { type: "invoiceData", content: cookie.invoiceData };
-    sendCipherTextToClient(cookie, sendable);
-    servicelog("Sent invoiceData to client #" + cookie.count);
-}
-
-function processSaveInvoiceList(cookie, content) {
-    var sendable;
-    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests invoice list saving: " + JSON.stringify(invoiceData.invoices));
-    if(userHasInvoiceEditPrivilige(cookie.user)) {
-	updateInvoicesFromClient(cookie, invoiceData.invoices);
-	cookie.invoiceData = createUserInvoiceData(cookie.user);
-    } else {
-	servicelog("user has insufficent priviliges to edit invoice tables");
-    }
-    sendable = { type: "invoiceData", content: cookie.invoiceData };
-    sendCipherTextToClient(cookie, sendable);
-    servicelog("Sent invoiceData to client #" + cookie.count);
 }
 
 function processDownloadInvoices(cookie, content) {
@@ -662,9 +626,6 @@ function processDownloadInvoices(cookie, content) {
     cookie.user.applicationData.sentMailList = [];
     framework.servicelog("Client #" + cookie.count + " requests invoice downloading");
     framework.setStatustoClient(cookie, "Downloading invoices");
-
-
-
     pdfData = [];
     playerList.forEach(function(p) {
 	var invoice = [];
@@ -987,72 +948,6 @@ function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     framework.servicelog("pushed preview PDF to client");
 }
 
-function updateCustomersFromClient(cookie, customers) {
-    var customerData = datastorage.read("customers");
-
-    var checkedCustomers = customers.map(function(c) {
-	if(cookie.user.applicationData.teams.indexOf(c.team) >= 0) { return c; }
-    }).filter(function(s){ return s; });
-
-    var newCustomerData = { customers: [] };
-    customerData.customers.forEach(function(c) {
-	if(checkedCustomers.filter(function(f) {
-	    return (f.team === c.team);
-	}).length == 0) {
-	    newCustomerData.customers.push(c);
-	}
-    });
-    checkedCustomers.forEach(function(c) {
-	newCustomerData.customers.push(c);
-    });
-
-    if(datastorage.write("customers", newCustomerData) === false) {
-	servicelog("Customer database write failed");
-    } else {
-	servicelog("Updated Customer database: " + JSON.stringify(newCustomerData));
-    }
-}
-
-function cleanupNumberInput(input) {
-    var cleanedNumber = input.replace(/,/g , ".").split(".");
-    if(cleanedNumber[1] === undefined) {
-	return cleanedNumber[0];
-    } else {
-	return cleanedNumber[0] + "." + cleanedNumber[1];
-    }
-}
-
-function updateInvoicesFromClient(cookie, invoices) {
-    var invoiceData = datastorage.read("invoices");
-
-    var checkedInvoices = invoices.map(function(c) {
-	if(c.user === cookie.user.username) { return c; }
-    }).filter(function(s){ return s; });
-
-    checkedInvoices.forEach(function(item) {
-	item.price = cleanupNumberInput(item.price);
-	item.vat = cleanupNumberInput(item.vat);
-    });
-
-    var newInvoiceData = { invoices: [] };
-    invoiceData.invoices.forEach(function(c) {
-	if(checkedInvoices.filter(function(f) {
-	    return (f.user === c.user);
-	}).length == 0) {
-	    newInvoiceData.invoices.push(c);
-	}
-    });
-    checkedInvoices.forEach(function(c) {
-	newInvoiceData.invoices.push(c);
-    });
-
-    if(datastorage.write("invoices", newInvoiceData) === false) {
-	servicelog("Invoice database write failed");
-    } else {
-	servicelog("Updated Invoice database: " + JSON.stringify(newInvoiceData));
-    }
-}
-
 function readUserData() {
     userData = datastorage.read("users");
     if(userData === false) {
@@ -1206,44 +1101,6 @@ function pushSentEmailZipToClient(cookie, billNumber) {
 	framework.servicelog("pushed email zipfile to client");
 	framework.setStatustoClient(cookie, "OK");
     });
-}
-
-function getNewChallenge() {
-    return ("challenge_" + sha1.hash(globalSalt + new Date().getTime().toString()) + "1");
-}
-
-function createUserInvoiceData(user) {
-    var customerData = datastorage.read("customers");
-    var invoiceData = datastorage.read("invoices");
-    var companyData = datastorage.read("company");
-
-    var ownCustomers = [];
-    customerData.customers.forEach(function(customer) {
-	if(user.applicationData.teams.indexOf(customer.team) >= 0) {
-	    ownCustomers.push(customer);
-	}
-    });
-    var ownInvoices = [];
-    invoiceData.invoices.forEach(function(item) {
-	if(user.username === item.user) {
-	    ownInvoices.push(item);
-	}
-    });
-    var ownCompany = [];
-    companyData.company.forEach(function(company) {
-	if(user.applicationData.teams.indexOf(company.id) >= 0) {
-	    ownCompany.push(company);
-	}
-    });
-
-    ownCustomers = sortByKey(ownCustomers, "name");
-    return { customers: ownCustomers,
-	     invoices: ownInvoices,
-	     company: ownCompany,
-	     emailText: user.applicationData.emailText,
-	     user: user.username,
-	     teams: user.applicationData.teams,
-	     priviliges: user.applicationData.priviliges };
 }
 
 
