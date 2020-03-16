@@ -24,6 +24,8 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processGetplayerDataForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getInvoicesForEdit") {
 	processGetInvoicesForEdit(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getArchiveForEdit") {
+	processGetArchiveForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "itemCountSelectorClicked") {
 	processItemCountSelectorClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "itemCountSelectorSelected") {
@@ -96,6 +98,7 @@ function createPreviewLink(count, id, value) {
 
 function createAdminPanelUserPriviliges() {
     return [ { privilige: "view", code: "v" },
+	     { privilige: "archive-edit", code: "ar"},
 	     { privilige: "teams-edit", code: "te"},
 	     { privilige: "customer-edit", code: "ce"},
 	     { privilige: "invoice-edit", code: "ie"},
@@ -119,7 +122,9 @@ function createTopButtonList(cookie) {
 	     { button: { text: "Muokkaa Pelaajia", callbackMessage: "getPlayerDataForEdit" },
 	       priviliges: [ "customer-edit" ] },
 	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
-	       priviliges: [ "invoice-edit" ] } ];
+	       priviliges: [ "invoice-edit" ] },
+	     { button: { text: "Arkisto", callbackMessage: "getArchiveForEdit" },
+	       priviliges: [ "archive-edit" ] } ];
 }
 
 
@@ -587,6 +592,48 @@ function processSaveAllInvoiceData(cookie, content) {
     }
     sendMainInvoicingPanel(cookie);
 }
+
+
+// Archived invoices
+
+function processGetArchiveForEdit(cookie, content) {
+    framework.servicelog("Client #" + cookie.count + " requests archives edit");
+    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
+	var topButtonList = framework.createTopButtons(cookie);
+	var items = [];
+	var invoices = [];
+	datastorage.read("archive").archive.forEach(function(a) {
+	    if(a.user === cookie.user.username) { invoices.push(a); }
+	});
+	invoices.forEach(function(i) {	    
+	    items.push([ [ framework.createUiCheckBox(i.id, false, "tick", true) ],
+			 [ framework.createUiTextNode("bill", i.bill) ],
+			 [ framework.createUiTextNode("date", i.date) ],
+			 [ framework.createUiTextNode("player", i.player) ],
+			 [ framework.createUiTextNode("items", i.items) ],
+			 [ framework.createUiTextNode("total", i.total) ] ]);
+	});
+	var itemList = { title: "Invoices",
+			 frameId: 0,
+			 header: [ [ [ framework.createUiHtmlCell("", "<b>Select</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Bill</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Date</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Player</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Items</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Total</b>") ] ] ],
+			 items: items };
+	var frameList = [ { frameType: "fixedListFrame", frame: itemList } ]
+	var sendable = { type: "createUiPage",
+			 content: { topButtonList: topButtonList,
+				    frameList: frameList } };
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("Sent archive data to client #" + cookie.count);
+    } else {
+ 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
+	sendMainInvoicingPanel(cookie);
+    }
+}
+
 
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
@@ -1249,6 +1296,7 @@ function initializeDataStorages() {
     datastorage.initialize("teams", { nextId: 1, teams: [] }, true);
     datastorage.initialize("players", { nextId: 1, players: [] }, true);
     datastorage.initialize("access", { access: [] }, true);
+    datastorage.initialize("archive", { nextId: 1, archive: [] }, true);
 
     if(mainConfig.version > databaseVersion) {
 	framework.servicelog("Database version is too high for this program release, please update program.");
