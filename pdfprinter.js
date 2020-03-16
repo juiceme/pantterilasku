@@ -77,14 +77,14 @@ function printItemList(doc, itemList) {
     var yposition = itemListStartYValue;
     // loop thru the product array
     itemList.forEach( function(s) {
-	var price = parseInt(s.count) * parseFloat(s.invoice.price);
-	var vatPrice = price + price * parseFloat(s.invoice.vat) / 100;
+	var price = parseInt(s.count) * parseFloat(s.item.price);
+	var vatPrice = price + price * parseFloat(s.item.vat) / 100;
 	doc.fontSize(8)
-	    .text(s.invoice.description, 65, yposition)
+	    .text(s.item.description, 65, yposition)
 	    .text(s.count, 344, yposition)
 	    .text("kpl", 373, yposition)
-	    .text(s.invoice.price, 415, yposition)
-	    .text(s.invoice.vat, 493, yposition)
+	    .text(s.item.price, 415, yposition)
+	    .text(s.item.vat, 493, yposition)
 	    .text(vatPrice.toFixed(2), 530, yposition);
 	yposition = yposition + 12;
     });
@@ -166,10 +166,10 @@ function printSheet(callback, connectionIndex, details, filename, billData, item
     printItemList(doc, itemList);
 
     // Draw the totals bar
-    var totalNoVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.invoice.price))})
+    var totalNoVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.item.price))})
 	.reduce(function(a, b){return a + b;});
-    var totalVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.invoice.price)*
-						   parseFloat(s.invoice.vat)/100)})
+    var totalVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.item.price)*
+						   parseFloat(s.item.vat)/100)})
 	.reduce(function(a, b){return a + b;});
     printTotalsBar(doc, itemList.length, billData.reference, totalNoVat, totalVat);
 

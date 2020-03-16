@@ -285,15 +285,20 @@ function processLinkClicked(cookie, content) {
 			 count: mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 6)[n] }; }
 	else { return false; }
     }).filter(function(f){ return f; });
-    var dueDate = 0;
-    if(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6] === "1 viikko") { dueDate = 7; }
-    if(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6] === "2 viikka") { dueDate = 14; }
-    if(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6] === "3 viikka") { dueDate = 21; }
-    if(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6] === "4 viikka") { dueDate = 28; }
+    var dueDate = dueDateToDays(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6])
     framework.setStatustoClient(cookie, "Printing preview");
     printPreview(pushPreviewToClient, cookie, { player: content.id, invoice: invoice, dueDate: dueDate });
 }
 
+function dueDateToDays(dueDate) {
+    dueDays = 0;
+    if(dueDate === "1 viikko") { dueDays = 7; }
+    if(dueDate === "2 viikkoa") { dueDays = 14; }
+    if(dueDate === "3 viikkoa") { dueDays = 21; }
+    if(dueDate === "4 viikkoa") { dueDays = 28; }
+    return dueDays;
+}
+    
 function processInvoiceSelectorSelected(cookie, content) {
     mainInvoiceMap[content.id] = content.state;
 }
@@ -636,45 +641,64 @@ function processSaveInvoiceList(cookie, content) {
     servicelog("Sent invoiceData to client #" + cookie.count);
 }
 
-function processSendInvoices(cookie, content) {
-    cookie.sentMailList = [];
-    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests bulk mailing " + JSON.stringify(invoiceData));
-    if(userHasSendEmailPrivilige(cookie.user)) {
-	setStatustoClient(cookie, "Sending bulk email");
-	saveEmailText(cookie, invoiceData.emailText);
-	sendBulkEmail(cookie, invoiceData);
-    } else {
-	servicelog("user has insufficent priviliges to send email");
-	setStatustoClient(cookie, "Cannot send email!");
-    }
-}
-
 function processDownloadInvoices(cookie, content) {
-    cookie.sentMailList = [];
-    var invoiceData = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests invoice downloading " + JSON.stringify(invoiceData));
-    setStatustoClient(cookie, "Downloading invoices");
-    downloadInvoicesToClient(cookie, invoiceData);
+    var playerList = createPlayerList(content);
+    if(playerList.length === 0) {
+	framework.servicelog("No selections, cancelling pdf downloading");
+	return;
+    }
+    var itemList = []
+    flag = false;
+    content.items[1].frame.forEach(function(i) {
+	itemList.push(i[1][0].selected);
+	if(i[1][0].selected !== "") {
+	    flag = true;
+	}
+    });
+    if(!flag) {
+	framework.servicelog("No selections, cancelling pdf downloading");
+	return;
+    }
+    cookie.user.applicationData.sentMailList = [];
+    framework.servicelog("Client #" + cookie.count + " requests invoice downloading");
+    framework.setStatustoClient(cookie, "Downloading invoices");
+
+
+
+    pdfData = [];
+    playerList.forEach(function(p) {
+	var invoice = [];
+	var index = 0;
+	itemList.forEach(function(i) {
+	    var item = [];
+	    datastorage.read("invoices").invoices.forEach(function(j) {
+		if(j.id === parseInt(i.split('.')[0])) {
+		    if(p.items[index] !== 0) {
+			item.push({ item: j, count: p.items[index] });
+		    }
+		    index++;
+		}
+	    })
+	    if(item.length !== 0) { invoice.push(item[0]); }
+	});
+	var player = datastorage.read("players").players.map(function(q) {
+	    if(q.id === p.player) { return q; }
+	}).filter(function(f){ return f; })[0];
+	var team = datastorage.read("teams").teams.map(function(t) {
+	    if(player.team === t.color) { return t; }
+	}).filter(function(f){ return f; })[0];
+	pdfData.push({ player: player,
+		       team: team,
+		       invoice: invoice,
+		       dueDays: dueDateToDays(p.dueDate) });
+    });
+    pdfData.forEach(function(p) {
+	createPdfEmailInvoice(cookie, p.player, p.team, p.invoice, p.dueDays, "", pdfData.length, dontSendEmail);
+    });
 }
 
 function processSendInvoicesByEmail(cookie, content) {
-    var playerList = []
-    content.items[0].frame.forEach(function(p) {
-	var itemLine = [];
-	var flag = false
-	itemLine.push(p[0][0].key);
-	if(p[2][0].checked) { itemLine.push(p[2][1].selected); flag = true; } else { itemLine.push(0); }
-	if(p[3][0].checked) { itemLine.push(p[3][1].selected); flag = true; } else { itemLine.push(0); }
-	if(p[4][0].checked) { itemLine.push(p[4][1].selected); flag = true; } else { itemLine.push(0); }
-	if(p[5][0].checked) { itemLine.push(p[5][1].selected); flag = true; } else { itemLine.push(0); }
-	if(p[6][0].checked) { itemLine.push(p[6][1].selected); flag = true; } else { itemLine.push(0); }
-	if(p[7][0].checked) { itemLine.push(p[7][1].selected); flag = true; } else { itemLine.push(0); }
-	itemLine.push(p[8][0].selected);
-	if(flag) {
-	    playerList.push(itemLine)
-	}
-    });
+    var playerList = createPlayerList(content);
     if(playerList.length === 0) {
 	return;
     }
@@ -690,12 +714,11 @@ function processSendInvoicesByEmail(cookie, content) {
 	return;
     }
     var emailText = content.items[2].frame[0][0][0].value
-
     // Save the list to cookie.applicationData while showing the confirnmation popup.
+    cookie.user.applicationData.sentMailList = [];
     cookie.user.applicationData.invoices = { players: playerList,
 					     items: itemList,
 					     emailText: emailText };
-
     var newAccess = [];
     datastorage.read("access").access.forEach(function(a) {
 	if(a.username !== cookie.user.username) {
@@ -710,7 +733,6 @@ function processSendInvoicesByEmail(cookie, content) {
     } else {
 	framework.servicelog("Updated access database");
     }
-
     var confirmText = "Olet lähettämässä " +
 	playerList.length + " laskua sähköpostilla.\nHaluatko jatkaa?"
     sendable = { type: "confirmBox",
@@ -719,15 +741,105 @@ function processSendInvoicesByEmail(cookie, content) {
     framework.sendCipherTextToClient(cookie, sendable);
 }
 
+function createPlayerList(content) {
+    var playerList = []
+    content.items[0].frame.forEach(function(p) {
+	var line = { player: p[0][0].key,
+		     dueDate: p[8][0].selected,
+		     items: [] };
+	var flag = false
+	if(p[2][0].checked) { line.items.push(p[2][1].selected); flag = true; } else { line.items.push(0); }
+	if(p[3][0].checked) { line.items.push(p[3][1].selected); flag = true; } else { line.items.push(0); }
+	if(p[4][0].checked) { line.items.push(p[4][1].selected); flag = true; } else { line.items.push(0); }
+	if(p[5][0].checked) { line.items.push(p[5][1].selected); flag = true; } else { line.items.push(0); }
+	if(p[6][0].checked) { line.items.push(p[6][1].selected); flag = true; } else { line.items.push(0); }
+	if(p[7][0].checked) { line.items.push(p[7][1].selected); flag = true; } else { line.items.push(0); }
+	if(flag) {
+	    playerList.push(line)
+	}
+    });
+    return playerList;
+}
+
 function processConfirmedEmailSending(cookie, content) {
     // when confirm popup has been clicked
     if(content.result) {
-	console.log(JSON.stringify(cookie.user.applicationData.invoices))
-	
+	if((cookie.user.applicationData.invoices.players.length) === 0 ||
+	   (cookie.user.applicationData.invoices.items.length === 0)) {
+	    cookie.user.applicationData.invoices = {};
+	    framework.servicelog("No selections, cancelling email sending");
+	    return;
+	}
+	pdfData = [];
+	cookie.user.applicationData.invoices.players.forEach(function(p) {
+	    var invoice = [];
+	    var index = 0;
+	    cookie.user.applicationData.invoices.items.forEach(function(i) {
+		var item = [];
+		datastorage.read("invoices").invoices.forEach(function(j) {
+		    if(j.id === parseInt(i.split('.')[0])) {
+			if(p.items[index] !== 0) {
+			    item.push({ item: j, count: p.items[index] });
+			}
+			index++;
+		    }
+		})
+		if(item.length !== 0) {	invoice.push(item[0]); }
+	    });
+	    var player = datastorage.read("players").players.map(function(q) {
+		if(q.id === p.player) { return q; }
+	    }).filter(function(f){ return f; })[0];
+	    var emailText = cookie.user.applicationData.invoices.emailText;
+	    var team = datastorage.read("teams").teams.map(function(t) {
+		if(player.team === t.color) { return t; }
+	    }).filter(function(f){ return f; })[0];
+	    
+	    pdfData.push({ player: player,
+			   team: team,
+			   invoice: invoice,
+			   dueDays: dueDateToDays(p.dueDate),
+			   emailText: emailText });
+	});
+	pdfData.forEach(function(p) {
+	    createPdfEmailInvoice(cookie, p.player, p.team, p.invoice, p.dueDays, p.emailText, pdfData.length, sendEmail);
+	});
     } else {
 	cookie.user.applicationData.invoices = {};
 	framework.servicelog("User has cancelled sending invoice emails");
     }
+}
+
+function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText, totalEmailNumber, callback) {
+    var now = new Date();
+    var billNumber = getniceDateTime(now);
+    var playerName = player.name.replace(/\W+/g , "_");
+    var filename = "./temp/" + playerName + "_" + billNumber + ".pdf";
+    var bill = { teamName: team.name,
+		 teamAddress: team.address,
+		 bank: team.bank,
+		 bic: team.bic,
+		 iban: team.iban,
+		 playerName: player.name,
+		 playerAddress: player.address,
+		 playerDetail: player.detail,
+		 reference: player.reference,
+		 date: getNiceDate(now),
+		 number: billNumber,
+		 id: "",
+		 intrest: "",
+		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*dueDays))),
+		 notice: "14 vrk." }
+    var mailDetails = { text: emailText,
+			from: datastorage.read("email").sender,
+			"reply-to": cookie.user.realname + " <" + cookie.user.email + ">",
+			to: player.email,
+			subject: "Uusi lasku " + team.name + " / " + billNumber,
+			attachment: [ { path: filename,
+					type: "application/pdf",
+					name: player.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
+    pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, invoice, "invoice sending",
+			  totalEmailNumber, billNumber);
+    framework.servicelog("Created PDF preview document");
 }
 
 function processHelpScreen(cookie, content) {
@@ -750,39 +862,28 @@ function processHelpScreen(cookie, content) {
 
 function printPreview(callback, cookie, previewData)
 {
-    console.log(JSON.stringify(previewData));
-
     var filename = "./temp/preview.pdf";
     var now = new Date();
-
     var invoice = [];
     previewData.invoice.forEach(function(i) {
 	invoice.push(datastorage.read("invoices").invoices.map(function(j) {
 	    if(j.id === parseInt(i.item.split('.')[0])) {
-		return { invoice: j,
+		return { item: j,
 			 count: i.count };
 	    }
 	}).filter(function(f){ return f; })[0]);
     });
-
-    console.log(JSON.stringify(invoice))
-
     if(invoice.length == 0) {
 	servicelog("Invoice empty, not creating PDF preview document");
 	setStatustoClient(cookie, "No preview available");
 	return null;
     }
-
     var player = datastorage.read("players").players.map(function(p) {
 	if(p.id === previewData.player) { return p; }
     }).filter(function(f){ return f; })[0]
-
     var team = datastorage.read("teams").teams.map(function(t) {
 	if(player.team === t.color) { return t; }
     }).filter(function(f){ return f; })[0];
-
-    console.log(JSON.stringify(team))
-
     var bill = { teamName: team.name,
 		 teamAddress: team.address,
 		 bank: team.bank,
@@ -798,19 +899,18 @@ function printPreview(callback, cookie, previewData)
 		 intrest: "",
 		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*previewData.dueDate))),
 		 notice: "14 vrk." }
-
     pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
     framework.servicelog("Created PDF preview document");
 }
 
-function sendBulkEmail(cookie, invoiceData) {
+function downloadInvoicesToClient(cookie, playerList, itemList) {
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var customerCount = 0;
 
     if(invoiceData.invoices.length === 0) {
-	servicelog("Invoice empty, not emailing PDF documents");
-	setStatustoClient(cookie, "No mailing available");
+	framework.servicelog("Invoice empty, not downloading PDF documents");
+	framework.setStatustoClient(cookie, "No downloading available");
 	return null;
     }
 
@@ -854,79 +954,11 @@ function sendBulkEmail(cookie, invoiceData) {
 	var customerName = customer.name.replace(/\W+/g , "_");
 	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
-	var mailDetails = { text: invoiceData.emailText,
-			    from: datastorage.read("email").sender,
-			    "reply-to": cookie.user.realname + " <" + cookie.user.email + ">",
-			    to:  customer.email,
-			    subject: "Uusi lasku " + company.name + " / " + billNumber,
-			    attachment: [ { path: filename,
-					    type: "application/pdf",
-					    name: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
-
-	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
-
-	pdfprinter.printSheet(sendEmail, cookie, mailDetails, filename, bill, invoiceRows, "invoice sending",
-			      invoiceData.invoices.length, billNumber);
-	servicelog("Sent PDF emails");
-    });
-}
-
-function downloadInvoicesToClient(cookie, invoiceData) {
-    var now = new Date();
-    var billNumber = getniceDateTime(now);
-    var customerCount = 0;
-
-    if(invoiceData.invoices.length === 0) {
-	servicelog("Invoice empty, not downloading PDF documents");
-	setStatustoClient(cookie, "No downloading available");
-	return null;
-    }
-
-    invoiceData.invoices.forEach(function(currentCustomer) {
-	customerCount++;
-	var customer = cookie.invoiceData.customers.map(function(a, b) {
-	    if(currentCustomer.id === b) { a.dueDate = currentCustomer.dueDate;  return a; }
-	}).filter(function(s){ return s; })[0];
-
-	var invoiceRows = cookie.invoiceData.invoices.map(function(a, b) {
-	    if(currentCustomer.invoices.map(function(e) {
-		return e.item;
-	    }).indexOf(b) >= 0) {
-		a.n = currentCustomer.invoices[currentCustomer.invoices.map(function(e) {
-		    return e.item;
-		}).indexOf(b)].count;
-		return a;
-	    }
-	}).filter(function(s){ return s; });
-
-	var company = cookie.invoiceData.company.map(function(s) {
-	    if(s.id === cookie.invoiceData.customers[currentCustomer.id].team) { return s }
-	}).filter(function(s){ return s; })[0];
-
-	var bill = { companyName: company.name,
-		     companyAddress: company.address,
-		     bankName: company.bankName,
-		     bic: company.bic,
-		     iban: company.iban,
-		     customerName: customer.name,
-		     customerAddress: customer.address,
-		     customerDetail: customer.detail,
-		     reference: customer.reference,
-		     date: getNiceDate(now),
-		     number: billNumber,
-		     id: "",
-		     intrest: "",
-		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*customer.dueDate))),
-		     notice: "14 vrk." }
-
-	var customerName = customer.name.replace(/\W+/g , "_");
-	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
-
-	servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
+	framework.servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
 
 	pdfprinter.printSheet(dontSendEmail, cookie, null, filename, bill, invoiceRows, "invoice downloading",
 			      invoiceData.invoices.length, billNumber);
-	servicelog("Created PDF documents");
+	framework.servicelog("Created PDF documents");
     });
 }
 
@@ -953,27 +985,6 @@ function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     framework.sendCipherTextToClient(cookie, sendable);
     framework.setStatustoClient(cookie, "OK");
     framework.servicelog("pushed preview PDF to client");
-}
-
-function saveEmailText(cookie, emailText) {
-    cookie.user.applicationData.emailText = emailText;
-    updateUserdataFromCookie(cookie);
-    servicelog("Updated user data with new email text: [" + JSON.stringify(emailText) + "]");
-}
-
-function updateUserdataFromCookie(cookie) {
-    var userData = readUserData();
-    var newUserData = { users: [] };
-
-    newUserData.users = userData.users.filter(function(u) {
-	return u.username !== cookie.user.username;
-    });
-    newUserData.users.push(cookie.user);
-    if(datastorage.write("users", newUserData) === false) {
-	servicelog("User database write failed");
-    } else {
-	servicelog("Updated User Account from cookie: " + JSON.stringify(cookie.user));
-    }
 }
 
 function updateCustomersFromClient(cookie, customers) {
@@ -1116,8 +1127,8 @@ function createAccount(account, accountDefaults) {
 }
 
 function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, billNumber) {
-    cookie.sentMailList.push(filename);
-    if(cookie.sentMailList.length === totalInvoiceCount) {
+    cookie.user.applicationData.sentMailList.push(filename);
+    if(cookie.user.applicationData.sentMailList.length === totalInvoiceCount) {
 	pushSentEmailZipToClient(cookie, billNumber);
     }
 }
@@ -1125,10 +1136,9 @@ function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, bill
 function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, billNumber) {
     var emailData = datastorage.read("email");
     if(emailData.blindlyTrust) {
-	servicelog("Trusting self-signed certificates");
+	framework.servicelog("Trusting self-signed certificates");
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     }
-
     email.server.connect({
 	user: emailData.user,
 	password: emailData.password,
@@ -1136,24 +1146,24 @@ function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, bil
 	ssl: emailData.ssl
     }).send(emailDetails, function(err, message) {
 	if(err) {
-	    servicelog(err + " : " + JSON.stringify(message));
-	    setStatustoClient(cookie, "Failed sending email!");
+	    framework.servicelog(err + " : " + JSON.stringify(message));
+	    framework.setStatustoClient(cookie, "Failed sending email!");
 	    if(filename) {
 		var newFilename =  "./failed_invoices/" + path.basename(filename);
 		fs.renameSync(filename, newFilename);
-		cookie.sentMailList.push(newFilename);
-		if(cookie.sentMailList.length === totalEmailCount) {
+		cookie.user.applicationData.sentMailList.push(newFilename);
+		if(cookie.user.applicationData.sentMailList.length === totalEmailCount) {
 		    pushSentEmailZipToClient(cookie, billNumber);
 		}
 	    }
 	} else {
-	    servicelog("Sent " + logline + " email to " + emailDetails.to);
-	    setStatustoClient(cookie, "Sent email");
+	    framework.servicelog("Sent " + logline + " email to " + emailDetails.to);
+	    framework.setStatustoClient(cookie, "Sent email");
 	    if(filename) {
 		var newFilename =  "./sent_invoices/" + path.basename(filename);
 		fs.renameSync(filename, newFilename);
-		cookie.sentMailList.push(newFilename);
-		if(cookie.sentMailList.length === totalEmailCount) {
+		cookie.user.applicationData.sentMailList.push(newFilename);
+		if(cookie.user.applicationData.sentMailList.length === totalEmailCount) {
 		    pushSentEmailZipToClient(cookie, billNumber);
 		}
 	    }
@@ -1166,35 +1176,35 @@ function pushSentEmailZipToClient(cookie, billNumber) {
     var archiveStream = fs.createWriteStream(zipFileName);
     var archive = archiver("zip");
     archive.pipe(archiveStream);
-    for(i=0; i<cookie.sentMailList.length; i++) {
-	var fileName = cookie.sentMailList[i].replace("./", "");
+    for(i=0; i<cookie.user.applicationData.sentMailList.length; i++) {
+	var fileName = cookie.user.applicationData.sentMailList[i].replace("./", "");
 	archive.append(fs.createReadStream(fileName), { name: fileName });
     }
     archive.finalize();
 
     archive.on('error', function(err) {
-	servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
+	framework.servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
 	return;
     });
 
     archiveStream.on('close', function() {
 	if(!stateIs(cookie, "loggedIn")) {
-	    setStatustoClient(cookie, "Login failure");
-	    servicelog("Login failure in zipfile sending");
+	    framework.setStatustoClient(cookie, "Login failure");
+	    framework.servicelog("Login failure in zipfile sending");
 	    return;
 	}
 	try {
 	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
 	} catch(err) {
-	    servicelog("Failed to load zipfile: " + err);
-	    setStatustoClient(cookie, "zipfile load failure!");
+	    framework.servicelog("Failed to load zipfile: " + err);
+	    framework.setStatustoClient(cookie, "zipfile load failure!");
 	    return;
 	}
 	var sendable = { type: "zipUpload",
 			 content: zipFile };
-	sendCipherTextToClient(cookie, sendable);
-	servicelog("pushed email zipfile to client");
-	setStatustoClient(cookie, "OK");
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("pushed email zipfile to client");
+	framework.setStatustoClient(cookie, "OK");
     });
 }
 
