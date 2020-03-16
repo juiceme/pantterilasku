@@ -13,7 +13,7 @@ var databaseVersion = 1;
 // Application specific part starts from here
 
 function handleApplicationMessage(cookie, decryptedMessage) {
-    
+
 //    framework.servicelog("Got message: " + JSON.stringify(decryptedMessage));
 
     if(decryptedMessage.type === "resetToMain") {
@@ -126,7 +126,7 @@ function createTopButtonList(cookie) {
 // Main UI panel, list of customers and invoices
 
 function processResetToMainState(cookie, content) {
-    // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel" 
+    // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel"
     framework.servicelog("User session reset to main state");
     cookie.user = datastorage.read("users").users.filter(function(u) {
 	return u.username === cookie.user.username;
@@ -372,7 +372,7 @@ function processGetTeamsDataForEdit(cookie, content) {
 function processSaveAllTeamsData(cookie, content) {
     if(framework.userHasPrivilige("teams-edit", cookie.user)) {
 	// reset visibility/selection mappings as customers may change...
-	mainDataVisibilityMap = []; 
+	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
 	newAccess = [];
@@ -467,7 +467,7 @@ function processGetplayerDataForEdit(cookie, content) {
 function processSavePlayerData(cookie, content) {
     if(framework.userHasPrivilige("customer-edit", cookie.user)) {
 	// reset visibility/selection mappings as players may change...
-	mainDataVisibilityMap = []; 
+	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
 	var updatedPlayers = [];
@@ -553,7 +553,7 @@ function processGetInvoicesForEdit(cookie, content) {
 function processSaveAllInvoiceData(cookie, content) {
     if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
 	// reset visibility/selection mappings as customers may change...
-	mainDataVisibilityMap = []; 
+	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
 	var newInvoices = [];
@@ -735,7 +735,7 @@ function processHelpScreen(cookie, content) {
     servicelog("Client #" + cookie.count + " requests help screen (mode : " + JSON.stringify(content) + " )");
     if(content.mode === "user") {
 	sendable = { type: "helpText",
-		     content: fs.readFileSync("./" + framework.getLanguageText(cookie, 
+		     content: fs.readFileSync("./" + framework.getLanguageText(cookie,
 								     "HELPFILE_USER"))
 		     .toString("base64") };
 	sendCipherTextToClient(cookie, sendable);
@@ -994,7 +994,7 @@ function updateCustomersFromClient(cookie, customers) {
     checkedCustomers.forEach(function(c) {
 	newCustomerData.customers.push(c);
     });
-    
+
     if(datastorage.write("customers", newCustomerData) === false) {
 	servicelog("Customer database write failed");
     } else {
@@ -1034,7 +1034,7 @@ function updateInvoicesFromClient(cookie, invoices) {
     checkedInvoices.forEach(function(c) {
 	newInvoiceData.invoices.push(c);
     });
-    
+
     if(datastorage.write("invoices", newInvoiceData) === false) {
 	servicelog("Invoice database write failed");
     } else {
@@ -1046,7 +1046,7 @@ function readUserData() {
     userData = datastorage.read("users");
     if(userData === false) {
 	servicelog("User database read failed");
-    } 
+    }
     return userData;
  }
 
@@ -1245,7 +1245,7 @@ function sortByKey(array, key) {
         var x = a[key];
         var y = b[key];
         if (typeof x == "string") {
-            x = (""+x).toLowerCase(); 
+            x = (""+x).toLowerCase();
         }
         if (typeof y == "string") {
             y = (""+y).toLowerCase();
