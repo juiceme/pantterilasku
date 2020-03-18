@@ -311,8 +311,11 @@ function processLinkClicked(cookie, content) {
 	setStatustoClient(cookie, "No preview available");
 	return;
     }
+    var now = new Date();
+    var billNumber = getniceDateTime(now);
+    var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*dueDays)));
     framework.setStatustoClient(cookie, "Printing preview");
-    createPdfEmailInvoice(cookie, player, team, invoice, dueDays, "", 0, pushPreviewToClient)
+    createPdfInvoice(cookie, billNumber++, player, team, invoice, dueDate, "", 0, pushPreviewToClient)
 }
 
 function dueDateToDays(dueDate) {
@@ -625,19 +628,21 @@ function processGetArchiveForEdit(cookie, content) {
 	datastorage.read("archive").archive.forEach(function(a) {
 	    if(a.user === cookie.user.username) { invoices.push(a); }
 	});
-	invoices.forEach(function(i) {	    
+	invoices.forEach(function(i) {
 	    items.push([ [ framework.createUiCheckBox(i.id, false, "tick", true) ],
-			 [ framework.createUiTextNode("bill", i.bill) ],
+			 [ framework.createUiTextNode("bill", i.number) ],
 			 [ framework.createUiTextNode("date", i.date) ],
-			 [ framework.createUiTextNode("player", i.player) ],
-			 [ framework.createUiTextNode("items", i.items) ],
-			 [ framework.createUiTextNode("total", i.total) ] ]);
+			 [ framework.createUiTextNode("due", i.dueDate) ],
+			 [ framework.createUiTextNode("player", i.name) ],
+			 [ framework.createUiTextNode("items", "[ " + i.invoice.items.map(function(i){ return i.id; }) + " ]") ],
+			 [ framework.createUiTextNode("total", (i.invoice.totalNoVat + i.invoice.totalVat).toFixed(2)) ] ]);
 	});
 	var itemList = { title: "Invoices",
 			 frameId: 0,
 			 header: [ [ [ framework.createUiHtmlCell("", "<b>Select</b>") ],
 				     [ framework.createUiHtmlCell("", "<b>Bill</b>") ],
 				     [ framework.createUiHtmlCell("", "<b>Date</b>") ],
+				     [ framework.createUiHtmlCell("", "<b>Due</b>") ],
 				     [ framework.createUiHtmlCell("", "<b>Player</b>") ],
 				     [ framework.createUiHtmlCell("", "<b>Items</b>") ],
 				     [ framework.createUiHtmlCell("", "<b>Total</b>") ] ] ],
@@ -720,8 +725,12 @@ function processDownloadInvoices(cookie, content) {
 		       invoice: invoice,
 		       dueDays: dueDateToDays(p.dueDate) });
     });
+    var now = new Date();
+    var billNumber = getniceDateTime(now);
     pdfData.forEach(function(p) {
-	createPdfEmailInvoice(cookie, p.player, p.team, p.invoice, p.dueDays, "", pdfData.length, dontSendEmail);
+	var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*p.dueDays)));
+	archiveInvoice(cookie, billNumber, p.player, p.team, p.invoice, now, dueDate);
+	createPdfInvoice(cookie, billNumber++, p.player, p.team, p.invoice, dueDate, "", pdfData.length, dontSendEmail);
     });
 }
 
@@ -828,8 +837,12 @@ function processConfirmedEmailSending(cookie, content) {
 			   dueDays: dueDateToDays(p.dueDate),
 			   emailText: emailText });
 	});
+	var now = new Date();
+	var billNumber = getniceDateTime(now);
 	pdfData.forEach(function(p) {
-	    createPdfEmailInvoice(cookie, p.player, p.team, p.invoice, p.dueDays, p.emailText, pdfData.length, sendEmail);
+	    var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*p.dueDays)));
+	    archiveInvoice(cookie, billNumber, p.player, p.team, p.invoice, now, dueDate);
+	    createPdfInvoice(cookie, billNumber++, p.player, p.team, p.invoice, dueDate, p.emailText, pdfData.length, sendEmail);
 	});
     } else {
 	cookie.user.applicationData.invoices = {};
@@ -837,28 +850,12 @@ function processConfirmedEmailSending(cookie, content) {
     }
 }
 
-function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText, totalEmailNumber, callback) {
+function createPdfInvoice(cookie, billNumber, player, team, invoice, dueDate, emailText, totalEmailNumber, callback) {
     var now = new Date();
-    var billNumber = getniceDateTime(now);
     var playerName = player.name.replace(/\W+/g , "_");
     var filename = "./temp/" + playerName + "_" + billNumber + ".pdf";
 
-    var itemizedInvoice = { items: [],
-			    totalNoVat: invoice.map(function(i) {
-				return parseInt(i.count) * parseFloat(i.item.price);
-			    }).reduce(function(a, b) {return a + b; }),
-			    totalVat: invoice.map(function(i) {
-				return parseInt(i.count) * parseFloat(i.item.price) * parseFloat(i.item.vat)/100;
-			    }).reduce(function(a, b) {return a + b; }) };
-    invoice.forEach( function(i) {
-	var price = parseInt(i.count) * parseFloat(i.item.price);
-	var vatPrice = price + price * parseFloat(i.item.vat) / 100;
-	itemizedInvoice.items.push({ description: i.item.description,
-				     count: i.count,
-				     price: i.item.price,
-				     vat: i.item.vat,
-				     vatPrice: vatPrice.toFixed(2) });
-    });
+    var itemizedInvoice = createItemizedInvoice(invoice);
     var bill = { teamName: team.name,
 		 teamAddress: team.address,
 		 bank: team.bank,
@@ -872,7 +869,7 @@ function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText
 		 number: billNumber,
 		 id: "",
 		 intrest: "",
-		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*dueDays))),
+		 expireDate: dueDate,
 		 notice: "14 vrk." }
     var mailDetails = { text: emailText,
 			from: datastorage.read("email").sender,
@@ -884,7 +881,51 @@ function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText
 					name: player.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
     pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, itemizedInvoice, "invoice sending",
 			  totalEmailNumber, billNumber);
-    framework.servicelog("Created PDF preview document");
+    framework.servicelog("Created PDF document");
+}
+
+function createItemizedInvoice(invoice) {
+    var itemizedInvoice = { items: [],
+			    totalNoVat: invoice.map(function(i) {
+				return parseInt(i.count) * parseFloat(i.item.price);
+			    }).reduce(function(a, b) {return a + b; }),
+			    totalVat: invoice.map(function(i) {
+				return parseInt(i.count) * parseFloat(i.item.price) * parseFloat(i.item.vat)/100;
+			    }).reduce(function(a, b) {return a + b; }) };
+    invoice.forEach( function(i) {
+	var price = parseInt(i.count) * parseFloat(i.item.price);
+	var vatPrice = price + price * parseFloat(i.item.vat) / 100;
+	itemizedInvoice.items.push({ id: i.item.id,
+				     description: i.item.description,
+				     count: i.count,
+				     price: i.item.price,
+				     vat: i.item.vat,
+				     vatPrice: vatPrice.toFixed(2) });
+    });
+    return itemizedInvoice;
+}
+
+function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate) {
+    var newArchive = [];
+    var nextId = datastorage.read("archive").nextId;
+    datastorage.read("archive").archive.forEach(function(a) {
+	newArchive.push(a)
+    });
+    var itemizedInvoice = createItemizedInvoice(invoice);
+    newArchive.push({ id: nextId++,
+		      user: cookie.user.username,
+		      number: billNumber,
+		      name: player.name,
+		      reference: player.reference,
+		      team: team.name,
+		      invoice: itemizedInvoice,
+		      date: getNiceDate(now),
+		      dueDate: dueDate });
+    if(datastorage.write("archive", { nextId: nextId, archive: newArchive }) === false) {
+	framework.servicelog("Updating archive database failed");
+    } else {
+	framework.servicelog("Updated archive database");
+    }
 }
 
 function processHelpScreen(cookie, content) {
