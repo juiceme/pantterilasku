@@ -44,6 +44,10 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processSendInvoicesByEmail(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "downloadInvoices") {
 	processDownloadInvoices(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "downloadArchived") {
+	processDownloadArchived(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "deleteArchived") {
+	processDeleteArchived(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "confirmResponse") {
 	if(decryptedMessage.content.confirmId === "confirm_email_sending") {
 	    processConfirmedEmailSending(cookie, decryptedMessage.content);
@@ -648,9 +652,13 @@ function processGetArchiveForEdit(cookie, content) {
 				     [ framework.createUiHtmlCell("", "<b>Total</b>") ] ] ],
 			 items: items };
 	var frameList = [ { frameType: "fixedListFrame", frame: itemList } ]
+	var buttonList = [ { id: 501, text: "Lataa valitut laskut zippitiedostona",  callbackMessage: "downloadArchived" },
+			   { id: 502, text: "Poista valitut laskut",  callbackMessage: "deleteArchived" },
+			   { id: 503, text: "Cancel", callbackMessage: "resetToMain" } ];
 	var sendable = { type: "createUiPage",
 			 content: { topButtonList: topButtonList,
-				    frameList: frameList } };
+				    frameList: frameList,
+				    buttonList: buttonList } };
 	framework.sendCipherTextToClient(cookie, sendable);
 	framework.servicelog("Sent archive data to client #" + cookie.count);
     } else {
@@ -659,6 +667,46 @@ function processGetArchiveForEdit(cookie, content) {
     }
 }
 
+function processDownloadArchived(cookie, content) {
+    var items = [];
+    content.items[0].frame.forEach(function(i) {
+	if(i[0][0].checked) {
+	    items.push(i[0][0].key);
+	}
+    });
+    var csvLines = [];
+    datastorage.read("archive").archive.forEach(function(a) {
+	if(items.map(function(i) {
+	    if(a.id === i) { return i; }
+	}).filter(function(f){ return f; }).length !== 0) {
+	    var iList = "";
+	    a.invoice.items.forEach(function(j) {
+		iList = iList.concat(j.description + ";" +
+				     j.count + ";" +
+				     parseFloat(j.price).toFixed(2) + ";" +
+				     parseFloat(j.vat).toFixed(2) + ";");
+	    });
+	    var line = a.number + ";" +
+		a.name + ";" +
+		a.reference + ";" +
+		a.team + ";" +
+		a.date + ";" +
+		a.dueDate + ";" +
+		parseFloat(a.invoice.totalNoVat).toFixed(2) + ";" +
+		parseFloat(a.invoice.totalVat).toFixed(2)  + ";" +
+		parseFloat(a.invoice.totalNoVat + a.invoice.totalVat).toFixed(2) + ";" +
+		iList;
+	    csvLines.push(line);
+	}
+    });
+    pushArchiveFileZiptoClient(cookie, csvLines);
+}
+
+function processDeleteArchived(cookie, content) {
+}
+
+
+// helpers
 
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
@@ -1091,21 +1139,21 @@ function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, bil
 
 function pushSentEmailZipToClient(cookie, billNumber) {
     var zipFileName = "./temp/invoices_" + billNumber + ".zip"
-    var archiveStream = fs.createWriteStream(zipFileName);
-    var archive = archiver("zip");
-    archive.pipe(archiveStream);
+    var zipFileStream = fs.createWriteStream(zipFileName);
+    var zipFile = archiver("zip");
+    zipFile.pipe(zipFileStream);
     for(i=0; i<cookie.user.applicationData.sentMailList.length; i++) {
 	var fileName = cookie.user.applicationData.sentMailList[i].replace("./", "");
-	archive.append(fs.createReadStream(fileName), { name: fileName });
+	zipFile.append(fs.createReadStream(fileName), { name: fileName });
     }
-    archive.finalize();
+    zipFile.finalize();
 
-    archive.on('error', function(err) {
+    zipFile.on('error', function(err) {
 	framework.servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
 	return;
     });
 
-    archiveStream.on('close', function() {
+    zipFileStream.on('close', function() {
 	if(!stateIs(cookie, "loggedIn")) {
 	    framework.setStatustoClient(cookie, "Login failure");
 	    framework.servicelog("Login failure in zipfile sending");
@@ -1122,6 +1170,40 @@ function pushSentEmailZipToClient(cookie, billNumber) {
 			 content: zipFile };
 	framework.sendCipherTextToClient(cookie, sendable);
 	framework.servicelog("pushed email zipfile to client");
+	framework.setStatustoClient(cookie, "OK");
+    });
+}
+
+function pushArchiveFileZiptoClient(cookie, archive) {
+    var archiveFileName = "./temp/archive_" + getniceDateTime(new Date()) + ".csv"
+    var archiveStream = fs.createWriteStream(archiveFileName, {flags:'a'});
+    var zipFileName = "./temp/archive_" + getniceDateTime(new Date()) + ".zip"
+    var zipFileStream = fs.createWriteStream(zipFileName);
+    var zipFile = archiver("zip");
+    archive.forEach(function(a) {
+	archiveStream.write(a + "\n");
+    });
+    archiveStream.end();
+    zipFile.pipe(zipFileStream);
+    zipFile.append(fs.createReadStream(archiveFileName), { name: archiveFileName });
+    zipFile.finalize();
+    zipFile.on('error', function(err) {
+	framework.servicelog("Error creating archive zipfile: " + JSON.stringify(err));
+	return;
+    });
+    zipFileStream.on('close', function() {
+	try {
+	    fs.unlinkSync(archiveFileName);
+	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
+	} catch(err) {
+	    framework.servicelog("Failed to load zipfile: " + err);
+	    framework.setStatustoClient(cookie, "zipfile load failure!");
+	    return;
+	}
+	var sendable = { type: "zipUpload",
+			 content: zipFile };
+	framework.sendCipherTextToClient(cookie, sendable);
+	framework.servicelog("pushed archive zipfile to client");
 	framework.setStatustoClient(cookie, "OK");
     });
 }
