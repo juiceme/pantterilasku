@@ -73,19 +73,17 @@ function printHeader(doc, bill) {
 	.text(bill.notice, 472, 171);
 }
 
-function printItemList(doc, itemList) {
+function printItemList(doc, itemizedInvoice) {
     var yposition = itemListStartYValue;
     // loop thru the product array
-    itemList.forEach( function(s) {
-	var price = parseInt(s.count) * parseFloat(s.item.price);
-	var vatPrice = price + price * parseFloat(s.item.vat) / 100;
+    itemizedInvoice.items.forEach( function(i) {
 	doc.fontSize(8)
-	    .text(s.item.description, 65, yposition)
-	    .text(s.count, 344, yposition)
+	    .text(i.description, 65, yposition)
+	    .text(i.count, 344, yposition)
 	    .text("kpl", 373, yposition)
-	    .text(s.item.price, 415, yposition)
-	    .text(s.item.vat, 493, yposition)
-	    .text(vatPrice.toFixed(2), 530, yposition);
+	    .text(i.price, 415, yposition)
+	    .text(i.vat, 493, yposition)
+	    .text(i.vatPrice, 530, yposition);
 	yposition = yposition + 12;
     });
 }
@@ -145,7 +143,7 @@ function printFooter(doc, bill, total) {
 	doc.text("TILISIIRTO", 26, 715);
 }
 
-function printSheet(callback, connectionIndex, details, filename, billData, itemList, logline, count, billNumber) {
+function printSheet(callback, connectionIndex, details, filename, billData, itemizedInvoice, logline, count, billNumber) {
     // Create the document
     var doc = new PDFDocument({	size: "a4",
 				layout: "portrait",
@@ -163,18 +161,14 @@ function printSheet(callback, connectionIndex, details, filename, billData, item
     doc.save().moveTo(55, 208).lineTo(560, 208).lineTo(560, 209).lineTo(55, 209).fill("#000000")
 
     // Itemized list of products
-    printItemList(doc, itemList);
+    printItemList(doc, itemizedInvoice);
 
     // Draw the totals bar
-    var totalNoVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.item.price))})
-	.reduce(function(a, b){return a + b;});
-    var totalVat = itemList.map(function(s){return(parseInt(s.count)*parseFloat(s.item.price)*
-						   parseFloat(s.item.vat)/100)})
-	.reduce(function(a, b){return a + b;});
-    printTotalsBar(doc, itemList.length, billData.reference, totalNoVat, totalVat);
+    printTotalsBar(doc, itemizedInvoice.items.length, billData.reference,
+		   itemizedInvoice.totalNoVat, itemizedInvoice.totalVat);
 
     // Draw the footer
-    printFooter(doc, billData, (totalNoVat + totalVat));
+    printFooter(doc, billData, (itemizedInvoice.totalNoVat + itemizedInvoice.totalVat));
 
     // Finalize PDF file
     doc.end()

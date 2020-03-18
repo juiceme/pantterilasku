@@ -285,14 +285,34 @@ function togglePreviewLinkVisibility() {
 }
 
 function processLinkClicked(cookie, content) {
-    var invoice = mainDataVisibilityMap.slice(content.count * 8, content.count * 8 + 6).map(function(s, n) {
+    var items = mainDataVisibilityMap.slice(content.count * 8, content.count * 8 + 6).map(function(s, n) {
 	if(s) { return { item: mainInvoiceMap[n + 1],
 			 count: mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 6)[n] }; }
 	else { return false; }
     }).filter(function(f){ return f; });
-    var dueDate = dueDateToDays(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6])
+    var dueDays = dueDateToDays(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6])
+    var player = datastorage.read("players").players.map(function(q) {
+	if(q.id === content.id) { return q; }
+    }).filter(function(f){ return f; })[0];
+    var team = datastorage.read("teams").teams.map(function(t) {
+	if(player.team === t.color) { return t; }
+    }).filter(function(f){ return f; })[0];
+    var invoice = [];
+    items.forEach(function(i) {
+	invoice.push(datastorage.read("invoices").invoices.map(function(j) {
+	    if(j.id === parseInt(i.item.split('.')[0])) {
+		return { item: j,
+			 count: i.count };
+	    }
+	}).filter(function(f){ return f; })[0]);
+    });
+    if(invoice.length == 0) {
+	servicelog("Invoice empty, not creating PDF preview document");
+	setStatustoClient(cookie, "No preview available");
+	return;
+    }
     framework.setStatustoClient(cookie, "Printing preview");
-    printPreview(pushPreviewToClient, cookie, { player: content.id, invoice: invoice, dueDate: dueDate });
+    createPdfEmailInvoice(cookie, player, team, invoice, dueDays, "", 0, pushPreviewToClient)
 }
 
 function dueDateToDays(dueDate) {
@@ -822,6 +842,23 @@ function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText
     var billNumber = getniceDateTime(now);
     var playerName = player.name.replace(/\W+/g , "_");
     var filename = "./temp/" + playerName + "_" + billNumber + ".pdf";
+
+    var itemizedInvoice = { items: [],
+			    totalNoVat: invoice.map(function(i) {
+				return parseInt(i.count) * parseFloat(i.item.price);
+			    }).reduce(function(a, b) {return a + b; }),
+			    totalVat: invoice.map(function(i) {
+				return parseInt(i.count) * parseFloat(i.item.price) * parseFloat(i.item.vat)/100;
+			    }).reduce(function(a, b) {return a + b; }) };
+    invoice.forEach( function(i) {
+	var price = parseInt(i.count) * parseFloat(i.item.price);
+	var vatPrice = price + price * parseFloat(i.item.vat) / 100;
+	itemizedInvoice.items.push({ description: i.item.description,
+				     count: i.count,
+				     price: i.item.price,
+				     vat: i.item.vat,
+				     vatPrice: vatPrice.toFixed(2) });
+    });
     var bill = { teamName: team.name,
 		 teamAddress: team.address,
 		 bank: team.bank,
@@ -845,7 +882,7 @@ function createPdfEmailInvoice(cookie, player, team, invoice, dueDays, emailText
 			attachment: [ { path: filename,
 					type: "application/pdf",
 					name: player.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
-    pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, invoice, "invoice sending",
+    pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, itemizedInvoice, "invoice sending",
 			  totalEmailNumber, billNumber);
     framework.servicelog("Created PDF preview document");
 }
@@ -866,108 +903,6 @@ function processHelpScreen(cookie, content) {
 		     .toString("base64") };
 	sendCipherTextToClient(cookie, sendable);
     }
-}
-
-function printPreview(callback, cookie, previewData)
-{
-    var filename = "./temp/preview.pdf";
-    var now = new Date();
-    var invoice = [];
-    previewData.invoice.forEach(function(i) {
-	invoice.push(datastorage.read("invoices").invoices.map(function(j) {
-	    if(j.id === parseInt(i.item.split('.')[0])) {
-		return { item: j,
-			 count: i.count };
-	    }
-	}).filter(function(f){ return f; })[0]);
-    });
-    if(invoice.length == 0) {
-	servicelog("Invoice empty, not creating PDF preview document");
-	setStatustoClient(cookie, "No preview available");
-	return null;
-    }
-    var player = datastorage.read("players").players.map(function(p) {
-	if(p.id === previewData.player) { return p; }
-    }).filter(function(f){ return f; })[0]
-    var team = datastorage.read("teams").teams.map(function(t) {
-	if(player.team === t.color) { return t; }
-    }).filter(function(f){ return f; })[0];
-    var bill = { teamName: team.name,
-		 teamAddress: team.address,
-		 bank: team.bank,
-		 bic: team.bic,
-		 iban: team.iban,
-		 playerName: player.name,
-		 playerAddress: player.address,
-		 playerDetail: player.detail,
-		 reference: player.reference,
-		 date: getNiceDate(now),
-		 number: "",
-		 id: "",
-		 intrest: "",
-		 expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*previewData.dueDate))),
-		 notice: "14 vrk." }
-    pdfprinter.printSheet(callback, cookie, {}, filename, bill, invoice, false, false);
-    framework.servicelog("Created PDF preview document");
-}
-
-function downloadInvoicesToClient(cookie, playerList, itemList) {
-    var now = new Date();
-    var billNumber = getniceDateTime(now);
-    var customerCount = 0;
-
-    if(invoiceData.invoices.length === 0) {
-	framework.servicelog("Invoice empty, not downloading PDF documents");
-	framework.setStatustoClient(cookie, "No downloading available");
-	return null;
-    }
-
-    invoiceData.invoices.forEach(function(currentCustomer) {
-	customerCount++;
-	var customer = cookie.invoiceData.customers.map(function(a, b) {
-	    if(currentCustomer.id === b) { a.dueDate = currentCustomer.dueDate;  return a; }
-	}).filter(function(s){ return s; })[0];
-
-	var invoiceRows = cookie.invoiceData.invoices.map(function(a, b) {
-	    if(currentCustomer.invoices.map(function(e) {
-		return e.item;
-	    }).indexOf(b) >= 0) {
-		a.n = currentCustomer.invoices[currentCustomer.invoices.map(function(e) {
-		    return e.item;
-		}).indexOf(b)].count;
-		return a;
-	    }
-	}).filter(function(s){ return s; });
-
-	var company = cookie.invoiceData.company.map(function(s) {
-	    if(s.id === cookie.invoiceData.customers[currentCustomer.id].team) { return s }
-	}).filter(function(s){ return s; })[0];
-
-	var bill = { companyName: company.name,
-		     companyAddress: company.address,
-		     bankName: company.bankName,
-		     bic: company.bic,
-		     iban: company.iban,
-		     customerName: customer.name,
-		     customerAddress: customer.address,
-		     customerDetail: customer.detail,
-		     reference: customer.reference,
-		     date: getNiceDate(now),
-		     number: billNumber,
-		     id: "",
-		     intrest: "",
-		     expireDate: getNiceDate(new Date(now.valueOf()+(60*60*24*1000*customer.dueDate))),
-		     notice: "14 vrk." }
-
-	var customerName = customer.name.replace(/\W+/g , "_");
-	var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
-
-	framework.servicelog("invoiceRows: " + JSON.stringify(invoiceRows));
-
-	pdfprinter.printSheet(dontSendEmail, cookie, null, filename, bill, invoiceRows, "invoice downloading",
-			      invoiceData.invoices.length, billNumber);
-	framework.servicelog("Created PDF documents");
-    });
 }
 
 function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
