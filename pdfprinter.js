@@ -51,17 +51,17 @@ function printHeader(doc, bill) {
 
     // Variable textfields
     doc.fontSize(11).font('Times-Bold')
-	.text(bill.teamName, 60, 36);
+	.text(bill.companyName, 60, 36);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.teamAddress, 60, 48);
+	.text(bill.companyAddress, 60, 48);
     doc.fontSize(11).font('Times-Bold')
-	.text(bill.playerName, 64, 120);
+	.text(bill.customerName, 64, 120);
     doc.fontSize(11).font('Times-Roman')
-	.text(bill.playerAddress, 64, 134);
-    if(bill.playerDetail) {
-	var spacing = bill.playerAddress.split(/\r\n|\r|\n/).length * 12
+	.text(bill.customerAddress, 64, 134);
+    if(bill.customerDetail) {
+	var spacing = bill.customerAddress.split(/\r\n|\r|\n/).length * 12
 	doc.fontSize(11).font('Times-Italic')
-	    .text("(" + bill.playerDetail + ")", 64, 136 + spacing);
+	    .text("(" + bill.customerDetail + ")", 64, 136 + spacing);
     }
 
     doc.fontSize(8).font('Times-Roman')
@@ -124,7 +124,7 @@ function printFooter(doc, bill, total) {
 
     // Variable textfields
     doc.fontSize(7).font('Times-Roman')
-	.text(bill.teamName, 57, 522)
+	.text(bill.companyName, 57, 522)
 	.text(bill.bank, 445, 530)
 	.text(("IBAN " + bill.iban), 445, 538)
 	.text(("BIC " + bill.bic), 445, 546);
@@ -132,9 +132,9 @@ function printFooter(doc, bill, total) {
     doc.fontSize(10).font('Times-Roman')
 	.text((bill.bank + "    " + bill.iban), 84, 592)
 	.text(bill.bic, 323, 592)
-	.text(bill.teamName, 84, 623)
-	.text(bill.playerName, 84, 656)
-	.text(bill.playerAddress, 84, 668)
+	.text(bill.companyName, 84, 623)
+	.text(bill.customerName, 84, 656)
+	.text(bill.customerAddress, 84, 668)
 	.text(bill.reference, 360, 732)
 	.text(bill.expireDate, 360, 756)
 	.text(total.toFixed(2), 540, 756);

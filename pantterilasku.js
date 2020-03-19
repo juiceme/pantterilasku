@@ -18,10 +18,10 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 
     if(decryptedMessage.type === "resetToMain") {
 	processResetToMainState(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "getTeamsDataForEdit") {
-	processGetTeamsDataForEdit(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "getPlayerDataForEdit") {
-	processGetplayerDataForEdit(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getCompanyDataForEdit") {
+	processGetCompanyDataForEdit(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "getCustomerDataForEdit") {
+	processGetcustomerDataForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getInvoicesForEdit") {
 	processGetInvoicesForEdit(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "getArchiveForEdit") {
@@ -34,10 +34,10 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	processLinkClicked(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "invoiceSelectorSelected") {
 	processInvoiceSelectorSelected(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "saveAllTeamsData") {
-	processSaveAllTeamsData(cookie, decryptedMessage.content); }
-    if(decryptedMessage.type === "savePlayerData") {
-	processSavePlayerData(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "saveAllCompanyData") {
+	processSaveAllCompanyData(cookie, decryptedMessage.content); }
+    if(decryptedMessage.type === "saveCustomerData") {
+	processSaveCustomerData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "saveAllInvoiceData") {
 	processSaveAllInvoiceData(cookie, decryptedMessage.content); }
     if(decryptedMessage.type === "sendInvoicesByEmail") {
@@ -60,20 +60,20 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 
 // helpers
 
-function getTeams(cookie) {
+function getCompany(cookie) {
     return ds.read("access").access.map(function(a) {
 	if(a.username === cookie.user.username) {
-	    return a.teams;
+	    return a.company;
 	}
     }).filter(function(f){ return f; })[0].split(',');
 }
 
-function getTeamPlayers(team) {
-    var players = [];
-    ds.read("players").players.forEach(function(p) {
-	if(p.team === team) { players.push(p); }
+function getCompanyCustomers(company) {
+    var customers = [];
+    ds.read("customers").customers.forEach(function(c) {
+	if(c.company === company) { customers.push(c); }
     });
-    return players;
+    return customers;
 }
 
 function createClickerElement(id, state, value) {
@@ -103,8 +103,8 @@ function createPreviewLink(count, id, value) {
 function createAdminPanelUserPriviliges() {
     return [ { privilige: "view", code: "v" },
 	     { privilige: "archive-edit", code: "ar"},
-	     { privilige: "teams-edit", code: "te"},
-	     { privilige: "customer-edit", code: "ce"},
+	     { privilige: "company-edit", code: "co"},
+	     { privilige: "customer-edit", code: "cu"},
 	     { privilige: "invoice-edit", code: "ie"},
 	     { privilige: "email-send", code: "e"} ];
 }
@@ -121,9 +121,9 @@ function createDefaultPriviliges() {
 // The panel automatically contains "Logout" and "Admin Mode" buttons so no need to include those.
 
 function createTopButtonList(cookie) {
-    return [ { button: { text: "Muokkaa Joukkueita", callbackMessage: "getTeamsDataForEdit" },
-	       priviliges: [ "teams-edit" ] },
-	     { button: { text: "Muokkaa Pelaajia", callbackMessage: "getPlayerDataForEdit" },
+    return [ { button: { text: "Muokkaa Joukkueita", callbackMessage: "getCompanyDataForEdit" },
+	       priviliges: [ "company-edit" ] },
+	     { button: { text: "Muokkaa Pelaajia", callbackMessage: "getCustomerDataForEdit" },
 	       priviliges: [ "customer-edit" ] },
 	     { button: { text: "Muokkaa Laskupohjia", callbackMessage: "getInvoicesForEdit" },
 	       priviliges: [ "invoice-edit" ] },
@@ -152,11 +152,11 @@ function sendMainInvoicingPanel(cookie) {
     var sendable;
     var topButtonList = fw.createTopButtons(cookie, [ { button: { text: "Help",
 								  callbackMessage: "getMainHelp" } } ]);
-    var players = [];
-    teams = getTeams(cookie);
-    if(teams.length !== 0) {
-	teams.forEach(function(t) {
-	    players = players.concat(getTeamPlayers(t));
+    var customers = [];
+    company = getCompany(cookie);
+    if(company.length !== 0) {
+	company.forEach(function(c) {
+	    customers = customers.concat(getCompanyCustomers(c));
 	});
     }
     var invoices = [];
@@ -166,7 +166,7 @@ function sendMainInvoicingPanel(cookie) {
 
     if(mainDataVisibilityMap.length === 0) {
 	var count = 0
-	while(count < players.length * 8 + 8) {
+	while(count < customers.length * 8 + 8) {
 	    mainDataVisibilityMap.push(false);
 	    if(((count+2) % 8) === 0) { mainDataSelectionMap.push("Heti"); }
 	    else { mainDataSelectionMap.push(1); }
@@ -183,10 +183,10 @@ function sendMainInvoicingPanel(cookie) {
 	if(a.username === cookie.user.username) { return a.emailText; }
     }).filter(function(f){ return f; })[0];
 	
-    var playerList = { title: "Pelaajat",
+    var customerList = { title: "Pelaajat",
 		       frameId: 0,
-		       header: fillHeaderRows(players, mainDataVisibilityMap, mainDataSelectionMap),
-		       items: fillCustomerRows(players, mainDataVisibilityMap, mainDataSelectionMap) };
+		       header: fillHeaderRows(customers, mainDataVisibilityMap, mainDataSelectionMap),
+		       items: fillCustomerRows(customers, mainDataVisibilityMap, mainDataSelectionMap) };
 
     var invoiceList = { title: "Laskupohjat",
 			frameId: 1,
@@ -201,7 +201,7 @@ function sendMainInvoicingPanel(cookie) {
     var buttonList = [ { id: 501, text: "Lähetä laskut sähköpostilla!", callbackMessage: "sendInvoicesByEmail" },
 		       { id: 502, text: "Lataa laskut zippitiedostona",  callbackMessage: "downloadInvoices" } ];
 
-    var frameList = [ { frameType: "fixedListFrame", frame: playerList },
+    var frameList = [ { frameType: "fixedListFrame", frame: customerList },
 		      { frameType: "fixedListFrame", frame: invoiceList },
 		      { frameType: "fixedListFrame", frame: emailList } ];
 
@@ -237,7 +237,7 @@ function fillCustomerRows(customers, vMap, sMap) {
     var count = 8
     var items = [];
     customers.forEach(function(c) {
-	items.push( [ [ fw.createUiTextNode(c.id, c.name) ],  [ fw.createUiTextNode("team", c.team) ],
+	items.push( [ [ fw.createUiTextNode(c.id, c.name) ],  [ fw.createUiTextNode("company", c.company) ],
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
@@ -295,11 +295,11 @@ function processLinkClicked(cookie, content) {
 	else { return false; }
     }).filter(function(f){ return f; });
     var dueDays = dueDateToDays(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6])
-    var player = ds.read("players").players.map(function(q) {
+    var customer = ds.read("customers").customers.map(function(q) {
 	if(q.id === content.id) { return q; }
     }).filter(function(f){ return f; })[0];
-    var team = ds.read("teams").teams.map(function(t) {
-	if(player.team === t.color) { return t; }
+    var company = ds.read("company").company.map(function(t) {
+	if(customer.company === t.color) { return t; }
     }).filter(function(f){ return f; })[0];
     var invoice = [];
     items.forEach(function(i) {
@@ -319,7 +319,7 @@ function processLinkClicked(cookie, content) {
     var billNumber = getniceDateTime(now);
     var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*dueDays)));
     fw.setStatustoClient(cookie, "Printing preview");
-    createPdfInvoice(cookie, billNumber++, player, team, invoice, dueDate, "", 0, pushPreviewToClient)
+    createPdfInvoice(cookie, billNumber++, customer, company, invoice, dueDate, "", 0, pushPreviewToClient)
 }
 
 function processInvoiceSelectorSelected(cookie, content) {
@@ -327,18 +327,18 @@ function processInvoiceSelectorSelected(cookie, content) {
 }
 
 
-// Teams data editing
+// Company data editing
 
-function processGetTeamsDataForEdit(cookie, content) {
-    fw.servicelog("Client #" + cookie.count + " requests teams edit");
-    if(fw.userHasPrivilige("teams-edit", cookie.user)) {
+function processGetCompanyDataForEdit(cookie, content) {
+    fw.servicelog("Client #" + cookie.count + " requests company edit");
+    if(fw.userHasPrivilige("company-edit", cookie.user)) {
 	var topButtonList = fw.createTopButtons(cookie);
 	var users = [];
 	var access = ds.read("access").access;
 	ds.read("users").users.forEach(function(u) {
 	    users.push({ user: u.username,
-			 teams: access.map(function(a) {
-			     if(u.username === a.username) { return a.teams; }
+			 company: access.map(function(a) {
+			     if(u.username === a.username) { return a.company; }
 			 }).filter(function(f){ return f; }),
 			 emailText: access.map(function(a) {
 			     if(u.username === a.username) { return a.emailText; }
@@ -348,24 +348,24 @@ function processGetTeamsDataForEdit(cookie, content) {
 	var userItems = [];
 	users.forEach(function(u) {
 	    userItems.push([ [ fw.createUiTextNode("username", u.user) ],
-			     [ fw.createUiInputField("teams", u.teams, 15, false) ],
-			     [ fw.createUiInputField("teams", u.emailText, 35, false) ] ]);
+			     [ fw.createUiInputField("company", u.company, 15, false) ],
+			     [ fw.createUiInputField("company", u.emailText, 35, false) ] ]);
 	});
 	var userItemList = { title: "Users",
 			     frameId: 0,
 			     header: [ [ [ fw.createUiHtmlCell("", "<b>User</b>") ],
-				       [ fw.createUiHtmlCell("", "<b>Team colors</b>") ] ] ],
+				       [ fw.createUiHtmlCell("", "<b>Company colors</b>") ] ] ],
 			     items: userItems };
-	var teamItems = [];
-	ds.read("teams").teams.forEach(function(t) {
-	    teamItems.push([ [ fw.createUiInputField(t.id, t.color, 15, false) ],
+	var companyItems = [];
+	ds.read("company").company.forEach(function(t) {
+	    companyItems.push([ [ fw.createUiInputField(t.id, t.color, 15, false) ],
 			     [ fw.createUiInputField("name", t.name, 15, false) ],
 			     [ fw.createUiInputField("address", t.address, 15, false) ],
 			     [ fw.createUiInputField("bank", t.bank, 15, false) ],
 			     [ fw.createUiInputField("iban", t.iban, 15, false) ],
 			     [ fw.createUiInputField("bic", t.bic, 15, false) ] ]);
 	});
-	var teamItemList = { title: "Teams",
+	var companyItemList = { title: "Company",
 			     frameId: 1,
 			     header: [ [ [ fw.createUiHtmlCell("", "") ],
 					 [ fw.createUiHtmlCell("", "<b>Color</b>") ],
@@ -374,7 +374,7 @@ function processGetTeamsDataForEdit(cookie, content) {
 					 [ fw.createUiHtmlCell("", "<b>Bank</b>") ],
 					 [ fw.createUiHtmlCell("", "<b>IBAN</b>") ],
 					 [ fw.createUiHtmlCell("", "<b>BIC</b>") ] ] ],
-			     items: teamItems,
+			     items: companyItems,
 			     newItem: [ [ fw.createUiInputField("color", "", 15, false) ],
 					[ fw.createUiInputField("name", "", 15, false) ],
 					[ fw.createUiInputField("address", "", 15, false) ],
@@ -382,23 +382,23 @@ function processGetTeamsDataForEdit(cookie, content) {
 					[ fw.createUiInputField("iban", "", 15, false) ],
 					[ fw.createUiInputField("bic", "", 15, false) ] ] };
 	var frameList = [ { frameType: "fixedListFrame", frame: userItemList },
-			  { frameType: "editListFrame", frame: teamItemList } ];
-	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllTeamsData" },
+			  { frameType: "editListFrame", frame: companyItemList } ];
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllCompanyData" },
 			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
 	var sendable = { type: "createUiPage",
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
 	fw.sendCipherTextToClient(cookie, sendable);
-	fw.servicelog("Sent teams data to client #" + cookie.count);
+	fw.servicelog("Sent company data to client #" + cookie.count);
     } else {
- 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit company");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
-function processSaveAllTeamsData(cookie, content) {
-    if(fw.userHasPrivilige("teams-edit", cookie.user)) {
+function processSaveAllCompanyData(cookie, content) {
+    if(fw.userHasPrivilige("company-edit", cookie.user)) {
 	// reset visibility/selection mappings as customers may change...
 	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
@@ -406,15 +406,15 @@ function processSaveAllTeamsData(cookie, content) {
 	newAccess = [];
 	content.items[0].frame.forEach(function(u) {
 	    newAccess.push({ username: u[0][0].text,
-			     teams: u[1][0].value,
+			     company: u[1][0].value,
 			     emailText: u[2][0].value });
 	});
-	newTeams = [];
-	var nextId = ds.read("teams").nextId;
+	newCompany = [];
+	var nextId = ds.read("company").nextId;
 	content.items[1].frame.forEach(function(t) {
 	    var id = t[0][0].key;
 	    if(id === "color") { id = nextId++; }
-	    newTeams.push({ id: id,
+	    newCompany.push({ id: id,
 			    color: t[0][0].value,
 			    name: t[1][0].value,
 			    address: t[2][0].value,
@@ -427,41 +427,41 @@ function processSaveAllTeamsData(cookie, content) {
 	} else {
 	    fw.servicelog("Updated access database");
 	}
-	if(ds.write("teams", { nextId: nextId, teams: newTeams }) === false) {
-	    fw.servicelog("Updating teams database failed");
+	if(ds.write("company", { nextId: nextId, company: newCompany }) === false) {
+	    fw.servicelog("Updating company database failed");
 	} else {
-	    fw.servicelog("Updated teams database");
+	    fw.servicelog("Updated company database");
 	}
     } else {
- 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit company");
     }
     sendMainInvoicingPanel(cookie);
 }
 
 
-// Player data editing
+// Customer data editing
 
-function processGetplayerDataForEdit(cookie, content) {
-    fw.servicelog("Client #" + cookie.count + " requests player edit");
+function processGetcustomerDataForEdit(cookie, content) {
+    fw.servicelog("Client #" + cookie.count + " requests customer edit");
     if(fw.userHasPrivilige("customer-edit", cookie.user)) {
 	var topButtonList = fw.createTopButtons(cookie);
 	var items = [];
-	var players = [];
-	teams = getTeams(cookie);
-	if(teams.length !== 0) {
-	    teams.forEach(function(t) {
-		players = players.concat(getTeamPlayers(t));
+	var customers = [];
+	company = getCompany(cookie);
+	if(company.length !== 0) {
+	    company.forEach(function(c) {
+		customers = customers.concat(getCompanyCustomers(c));
 	    });
 	}
-	players.forEach(function(p) {
-	    items.push([ [ fw.createUiInputField(p.id, p.name, 15, false) ],
-			 [ fw.createUiInputField("address", p.address, 15, false) ],
-			 [ fw.createUiInputField("detail", p.detail, 15, false) ],
-			 [ fw.createUiInputField("email", p.email, 15, false) ],
-			 [ fw.createUiInputField("bankref", p.reference, 16, false) ],
-			 [ fw.createUiSelectionList("team", teams, p.team, true, false, false) ] ]);
+	customers.forEach(function(c) {
+	    items.push([ [ fw.createUiInputField(c.id, c.name, 15, false) ],
+			 [ fw.createUiInputField("address", c.address, 15, false) ],
+			 [ fw.createUiInputField("detail", c.detail, 15, false) ],
+			 [ fw.createUiInputField("email", c.email, 15, false) ],
+			 [ fw.createUiInputField("bankref", c.reference, 16, false) ],
+			 [ fw.createUiSelectionList("company", company, c.company, true, false, false) ] ]);
 	});
-	var itemList = { title: "Players",
+	var itemList = { title: "Customers",
 			 frameId: 0,
 			 header: [ [ [ fw.createUiHtmlCell("", "") ],
 				     [ fw.createUiHtmlCell("", "<b>Name</b>") ],
@@ -469,66 +469,67 @@ function processGetplayerDataForEdit(cookie, content) {
 				     [ fw.createUiHtmlCell("", "<b>Detail</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Email</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Bank Reference</b>") ],
-				     [ fw.createUiHtmlCell("", "<b>Team</b>") ] ] ],
+				     [ fw.createUiHtmlCell("", "<b>Company</b>") ] ] ],
 			 items: items,
 			 newItem: [ [ fw.createUiInputField("name", "", 15, false) ],
 				    [ fw.createUiInputField("address", "", 15, false) ],
 				    [ fw.createUiInputField("detail", "", 15, false) ],
 				    [ fw.createUiInputField("email", "", 15, false) ],
 				    [ fw.createUiInputField("bankref", "", 16, false) ],
-				    [ fw.createUiSelectionList("team", teams, 1, true, false, false) ] ] };
+				    [ fw.createUiSelectionList("company", company, 1, true, false, false) ] ] };
 	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
-	var buttonList = [ { id: 501, text: "OK", callbackMessage: "savePlayerData" },
+	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveCustomerData" },
 			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
 	var sendable = { type: "createUiPage",
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
 	fw.sendCipherTextToClient(cookie, sendable);
-	fw.servicelog("Sent player data to client #" + cookie.count);
+	fw.servicelog("Sent customer data to client #" + cookie.count);
     } else {
- 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
-function processSavePlayerData(cookie, content) {
+function processSaveCustomerData(cookie, content) {
     if(fw.userHasPrivilige("customer-edit", cookie.user)) {
-	// reset visibility/selection mappings as players may change...
+	// reset visibility/selection mappings as customers may change...
 	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
-	var updatedPlayers = [];
-	var nextId = ds.read("players").nextId;
+	var updatedCustomers = [];
+	var nextId = ds.read("customers").nextId;
 	content.items[0].frame.forEach(function(c) {
 	    var id = c[0][0].key;
 	    if(id === "name") { id = nextId++; }
-	    updatedPlayers.push({ id: id,
+	    updatedCustomers.push({ id: id,
 				  name: c[0][0].value,
 				  address: c[1][0].value,
 				  detail: c[2][0].value,
 				  email: c[3][0].value,
 				  reference: c[4][0].value,
-				  team: c[5][0].selected });
+				  company: c[5][0].selected });
 	});
-	var newPlayers = [];
-	ds.read("players").players.forEach(function(p) {
-	    if(!teams.map(function(t) {
-		return (t === p.team);
+	var newCustomers = [];
+	var company = getCompany(cookie);
+	ds.read("customers").customers.forEach(function(c) {
+	    if(!company.map(function(t) {
+		return (t === c.company);
 	    }).filter(function(f){ return f; })[0]) {
-		newPlayers.push(p);
+		newCustomers.push(c);
 	    }
 	});
-	updatedPlayers.forEach(function(u) {
-	    newPlayers.push(u);
+	updatedCustomers.forEach(function(u) {
+	    newCustomers.push(u);
 	});
-	if(ds.write("players", { nextId: nextId, players: newPlayers }) === false) {
-	    fw.servicelog("Updating players database failed");
+	if(ds.write("customers", { nextId: nextId, customers: newCustomers }) === false) {
+	    fw.servicelog("Updating customers database failed");
 	} else {
-	    fw.servicelog("Updated players database");
+	    fw.servicelog("Updated customers database");
 	}
     } else {
- 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit customers");
     }
     sendMainInvoicingPanel(cookie);
 }
@@ -628,7 +629,7 @@ function processGetArchiveForEdit(cookie, content) {
 			 [ fw.createUiTextNode("bill", i.number) ],
 			 [ fw.createUiTextNode("date", i.date) ],
 			 [ fw.createUiTextNode("due", i.dueDate) ],
-			 [ fw.createUiTextNode("player", i.name) ],
+			 [ fw.createUiTextNode("customer", i.name) ],
 			 [ fw.createUiTextNode("items", "[ " + i.invoice.items.map(function(i){ return i.id; }) + " ]") ],
 			 [ fw.createUiTextNode("total", (i.invoice.totalNoVat + i.invoice.totalVat).toFixed(2)) ] ]);
 	});
@@ -638,7 +639,7 @@ function processGetArchiveForEdit(cookie, content) {
 				     [ fw.createUiHtmlCell("", "<b>Bill</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Date</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Due</b>") ],
-				     [ fw.createUiHtmlCell("", "<b>Player</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Customer</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Items</b>") ],
 				     [ fw.createUiHtmlCell("", "<b>Total</b>") ] ] ],
 			 items: items };
@@ -681,7 +682,7 @@ function processDownloadArchived(cookie, content) {
 		var line = a.number + ";" +
 		    a.name + ";" +
 		    a.reference + ";" +
-		    a.team + ";" +
+		    a.company + ";" +
 		    a.date + ";" +
 		    a.dueDate + ";" +
 		    parseFloat(a.invoice.totalNoVat).toFixed(2) + ";" +
@@ -728,8 +729,8 @@ function processDeleteArchived(cookie, content) {
 }
 
 function processDownloadInvoices(cookie, content) {
-    var playerList = createPlayerList(content);
-    if(playerList.length === 0) {
+    var customerList = createCustomerList(content);
+    if(customerList.length === 0) {
 	fw.servicelog("No selections, cancelling pdf downloading");
 	return;
     }
@@ -749,7 +750,7 @@ function processDownloadInvoices(cookie, content) {
     fw.servicelog("Client #" + cookie.count + " requests invoice downloading");
     fw.setStatustoClient(cookie, "Downloading invoices");
     pdfData = [];
-    playerList.forEach(function(p) {
+    customerList.forEach(function(p) {
 	var invoice = [];
 	var index = 0;
 	itemList.forEach(function(i) {
@@ -764,14 +765,14 @@ function processDownloadInvoices(cookie, content) {
 	    })
 	    if(item.length !== 0) { invoice.push(item[0]); }
 	});
-	var player = ds.read("players").players.map(function(q) {
-	    if(q.id === p.player) { return q; }
+	var customer = ds.read("customers").customers.map(function(q) {
+	    if(q.id === p.customer) { return q; }
 	}).filter(function(f){ return f; })[0];
-	var team = ds.read("teams").teams.map(function(t) {
-	    if(player.team === t.color) { return t; }
+	var company = ds.read("company").company.map(function(t) {
+	    if(customer.company === t.color) { return t; }
 	}).filter(function(f){ return f; })[0];
-	pdfData.push({ player: player,
-		       team: team,
+	pdfData.push({ customer: customer,
+		       company: company,
 		       invoice: invoice,
 		       dueDays: dueDateToDays(p.dueDate) });
     });
@@ -779,14 +780,14 @@ function processDownloadInvoices(cookie, content) {
     var billNumber = getniceDateTime(now);
     pdfData.forEach(function(p) {
 	var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*p.dueDays)));
-	archiveInvoice(cookie, billNumber, p.player, p.team, p.invoice, now, dueDate);
-	createPdfInvoice(cookie, billNumber++, p.player, p.team, p.invoice, dueDate, "", pdfData.length, dontSendEmail);
+	archiveInvoice(cookie, billNumber, p.customer, p.company, p.invoice, now, dueDate);
+	createPdfInvoice(cookie, billNumber++, p.customer, p.company, p.invoice, dueDate, "", pdfData.length, dontSendEmail);
     });
 }
 
 function processSendInvoicesByEmail(cookie, content) {
-    var playerList = createPlayerList(content);
-    if(playerList.length === 0) {
+    var customerList = createCustomerList(content);
+    if(customerList.length === 0) {
 	return;
     }
     var itemList = []
@@ -803,7 +804,7 @@ function processSendInvoicesByEmail(cookie, content) {
     var emailText = content.items[2].frame[0][0][0].value
     // Save the list to cookie.applicationData while showing the confirnmation popup.
     cookie.user.applicationData.sentMailList = [];
-    cookie.user.applicationData.invoices = { players: playerList,
+    cookie.user.applicationData.invoices = { customers: customerList,
 					     items: itemList,
 					     emailText: emailText };
     var newAccess = [];
@@ -821,17 +822,17 @@ function processSendInvoicesByEmail(cookie, content) {
 	fw.servicelog("Updated access database");
     }
     var confirmText = "Olet lähettämässä " +
-	playerList.length + " laskua sähköpostilla.\nHaluatko jatkaa?"
+	customerList.length + " laskua sähköpostilla.\nHaluatko jatkaa?"
     sendable = { type: "confirmBox",
 		 content: { confirmId: "confirm_email_sending",
 			    confirmText: confirmText } };
     fw.sendCipherTextToClient(cookie, sendable);
 }
 
-function createPlayerList(content) {
-    var playerList = []
+function createCustomerList(content) {
+    var customerList = []
     content.items[0].frame.forEach(function(p) {
-	var line = { player: p[0][0].key,
+	var line = { customer: p[0][0].key,
 		     dueDate: p[8][0].selected,
 		     items: [] };
 	var flag = false
@@ -842,23 +843,23 @@ function createPlayerList(content) {
 	if(p[6][0].checked) { line.items.push(p[6][1].selected); flag = true; } else { line.items.push(0); }
 	if(p[7][0].checked) { line.items.push(p[7][1].selected); flag = true; } else { line.items.push(0); }
 	if(flag) {
-	    playerList.push(line)
+	    customerList.push(line)
 	}
     });
-    return playerList;
+    return customerList;
 }
 
 function processConfirmedEmailSending(cookie, content) {
     // when confirm popup has been clicked
     if(content.result) {
-	if((cookie.user.applicationData.invoices.players.length) === 0 ||
+	if((cookie.user.applicationData.invoices.customers.length) === 0 ||
 	   (cookie.user.applicationData.invoices.items.length === 0)) {
 	    cookie.user.applicationData.invoices = {};
 	    fw.servicelog("No selections, cancelling email sending");
 	    return;
 	}
 	pdfData = [];
-	cookie.user.applicationData.invoices.players.forEach(function(p) {
+	cookie.user.applicationData.invoices.customers.forEach(function(p) {
 	    var invoice = [];
 	    var index = 0;
 	    cookie.user.applicationData.invoices.items.forEach(function(i) {
@@ -873,16 +874,16 @@ function processConfirmedEmailSending(cookie, content) {
 		})
 		if(item.length !== 0) {	invoice.push(item[0]); }
 	    });
-	    var player = ds.read("players").players.map(function(q) {
-		if(q.id === p.player) { return q; }
+	    var customer = ds.read("customers").customers.map(function(q) {
+		if(q.id === p.customer) { return q; }
 	    }).filter(function(f){ return f; })[0];
 	    var emailText = cookie.user.applicationData.invoices.emailText;
-	    var team = ds.read("teams").teams.map(function(t) {
-		if(player.team === t.color) { return t; }
+	    var company = ds.read("company").company.map(function(t) {
+		if(customer.company === t.color) { return t; }
 	    }).filter(function(f){ return f; })[0];
 	
-	    pdfData.push({ player: player,
-			   team: team,
+	    pdfData.push({ customer: customer,
+			   company: company,
 			   invoice: invoice,
 			   dueDays: dueDateToDays(p.dueDate),
 			   emailText: emailText });
@@ -891,8 +892,8 @@ function processConfirmedEmailSending(cookie, content) {
 	var billNumber = getniceDateTime(now);
 	pdfData.forEach(function(p) {
 	    var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*p.dueDays)));
-	    archiveInvoice(cookie, billNumber, p.player, p.team, p.invoice, now, dueDate);
-	    createPdfInvoice(cookie, billNumber++, p.player, p.team, p.invoice, dueDate, p.emailText, pdfData.length, sendEmail);
+	    archiveInvoice(cookie, billNumber, p.customer, p.company, p.invoice, now, dueDate);
+	    createPdfInvoice(cookie, billNumber++, p.customer, p.company, p.invoice, dueDate, p.emailText, pdfData.length, sendEmail);
 	});
     } else {
 	cookie.user.applicationData.invoices = {};
@@ -900,21 +901,21 @@ function processConfirmedEmailSending(cookie, content) {
     }
 }
 
-function createPdfInvoice(cookie, billNumber, player, team, invoice, dueDate, emailText, totalEmailNumber, callback) {
+function createPdfInvoice(cookie, billNumber, customer, company, invoice, dueDate, emailText, totalEmailNumber, callback) {
     var now = new Date();
-    var playerName = player.name.replace(/\W+/g , "_");
-    var filename = "./temp/" + playerName + "_" + billNumber + ".pdf";
+    var customerName = customer.name.replace(/\W+/g , "_");
+    var filename = "./temp/" + customerName + "_" + billNumber + ".pdf";
 
     var itemizedInvoice = createItemizedInvoice(invoice);
-    var bill = { teamName: team.name,
-		 teamAddress: team.address,
-		 bank: team.bank,
-		 bic: team.bic,
-		 iban: team.iban,
-		 playerName: player.name,
-		 playerAddress: player.address,
-		 playerDetail: player.detail,
-		 reference: player.reference,
+    var bill = { companyName: company.name,
+		 companyAddress: company.address,
+		 bank: company.bank,
+		 bic: company.bic,
+		 iban: company.iban,
+		 customerName: customer.name,
+		 customerAddress: customer.address,
+		 customerDetail: customer.detail,
+		 reference: customer.reference,
 		 date: getNiceDate(now),
 		 number: billNumber,
 		 id: "",
@@ -924,11 +925,11 @@ function createPdfInvoice(cookie, billNumber, player, team, invoice, dueDate, em
     var mailDetails = { text: emailText,
 			from: ds.read("email").sender,
 			"reply-to": cookie.user.realname + " <" + cookie.user.email + ">",
-			to: player.email,
-			subject: "Uusi lasku " + team.name + " / " + billNumber,
+			to: customer.email,
+			subject: "Uusi lasku " + company.name + " / " + billNumber,
 			attachment: [ { path: filename,
 					type: "application/pdf",
-					name: player.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
+					name: customer.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
     pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, itemizedInvoice, "invoice sending",
 			  totalEmailNumber, billNumber);
     fw.servicelog("Created PDF document");
@@ -955,7 +956,7 @@ function createItemizedInvoice(invoice) {
     return itemizedInvoice;
 }
 
-function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate) {
+function archiveInvoice(cookie, billNumber, customer, company, invoice, now, dueDate) {
     var newArchive = [];
     var nextId = ds.read("archive").nextId;
     ds.read("archive").archive.forEach(function(a) {
@@ -965,9 +966,9 @@ function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate)
     newArchive.push({ id: nextId++,
 		      user: cookie.user.username,
 		      number: billNumber,
-		      name: player.name,
-		      reference: player.reference,
-		      team: team.name,
+		      name: customer.name,
+		      reference: customer.reference,
+		      company: company.name,
 		      invoice: itemizedInvoice,
 		      date: getNiceDate(now),
 		      dueDate: dueDate });
@@ -1162,7 +1163,7 @@ function updateDatabaseVersionTo_1() {
     var newAccessConfig = [];
     userConfig.forEach(function(u) {
 	newAccessConfig.push({ username: u.username,
-			       teams: u.applicationData.teams[0],
+			       company: u.applicationData.teams[0],
 			       emailText: u.applicationData.emailText });
     });
     if(ds.write("access", { access: newAccessConfig }) === false) {
@@ -1172,40 +1173,40 @@ function updateDatabaseVersionTo_1() {
 	fw.servicelog("Updated access database to v.1");
     }
 
-    var newTeamsConfig = [];
+    var newCompanyConfig = [];
     nextId = 1;
     companyConfig.forEach(function(c) {
-	newTeamsConfig.push({ id: nextId++,
-			      color: c.id,
-			      name: c.name,
-			      address: c.address,
-			      bank: c.bankName,
-			      iban: c.iban,
-			      bic: c.bic });
-    });
-    if(ds.write("teams", { nextId: nextId, teams: newTeamsConfig }) === false) {
-	fw.servicelog("Updating teams database failed");
-	process.exit(1);
-    } else {
-	fw.servicelog("Updated teams database to v.1");
-    }
-
-    var newPlayersConfig = [];
-    nextId = 1;
-    customersConfig.forEach(function(c) {
-	newPlayersConfig.push({ id: nextId++,
+	newCompanyConfig.push({ id: nextId++,
+				color: c.id,
 				name: c.name,
 				address: c.address,
-				detail: c.detail,
-				email: c.email,
-				reference: c.reference,
-				team: c.team });
+				bank: c.bankName,
+				iban: c.iban,
+				bic: c.bic });
     });
-    if(ds.write("players", { nextId: nextId, players: newPlayersConfig }) === false) {
-	fw.servicelog("Updating players database failed");
+    if(ds.write("company", { nextId: nextId, company: newCompanyConfig }) === false) {
+	fw.servicelog("Updating company database failed");
 	process.exit(1);
     } else {
-	fw.servicelog("Updated players database to v.1");
+	fw.servicelog("Updated company database to v.1");
+    }
+
+    var newCustomersConfig = [];
+    nextId = 1;
+    customersConfig.forEach(function(c) {
+	newCustomersConfig.push({ id: nextId++,
+				  name: c.name,
+				  address: c.address,
+				  detail: c.detail,
+				  email: c.email,
+				  reference: c.reference,
+				  company: c.team });
+    });
+    if(ds.write("customers", { nextId: nextId, customers: newCustomersConfig }) === false) {
+	fw.servicelog("Updating customers database failed");
+	process.exit(1);
+    } else {
+	fw.servicelog("Updated customers database to v.1");
     }
 
     var newInvoiceConfig = [];
@@ -1225,10 +1226,10 @@ function updateDatabaseVersionTo_1() {
     }
 
     if(ds.write("main", { main: { version: 1,
-					    port: mainConfig.port,
-					    siteFullUrl: mainConfig.siteFullUrl,
-					    emailVerification: false,
-					   defaultLanguage: mainConfig.language } } ) === false) {
+				  port: mainConfig.port,
+				  siteFullUrl: mainConfig.siteFullUrl,
+				  emailVerification: false,
+				  defaultLanguage: mainConfig.language } } ) === false) {
 	fw.servicelog("Updating main database failed");
 	process.exit(1);
     } else {
@@ -1251,12 +1252,10 @@ function initializeDataStorages() {
     var mainConfig = ds.read("main").main;
     if(mainConfig.version === undefined) {
 	mainConfig.version = 0;
-	ds.initialize("customers", { nextId: 1, customers: [] }, true);
-	ds.initialize("company", { nextId: 1, company: [] }, true);
     }
     ds.initialize("invoices", { nextId: 1, invoices: [] }, true);
-    ds.initialize("teams", { nextId: 1, teams: [] }, true);
-    ds.initialize("players", { nextId: 1, players: [] }, true);
+    ds.initialize("company", { nextId: 1, company: [] }, true);
+    ds.initialize("customers", { nextId: 1, customers: [] }, true);
     ds.initialize("access", { access: [] }, true);
     ds.initialize("archive", { nextId: 1, archive: [] }, true);
 
