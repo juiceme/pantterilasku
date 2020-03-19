@@ -322,15 +322,6 @@ function processLinkClicked(cookie, content) {
     createPdfInvoice(cookie, billNumber++, player, team, invoice, dueDate, "", 0, pushPreviewToClient)
 }
 
-function dueDateToDays(dueDate) {
-    dueDays = 0;
-    if(dueDate === "1 viikko") { dueDays = 7; }
-    if(dueDate === "2 viikkoa") { dueDays = 14; }
-    if(dueDate === "3 viikkoa") { dueDays = 21; }
-    if(dueDate === "4 viikkoa") { dueDays = 28; }
-    return dueDays;
-}
-    
 function processInvoiceSelectorSelected(cookie, content) {
     mainInvoiceMap[content.id] = content.state;
 }
@@ -736,26 +727,6 @@ function processDeleteArchived(cookie, content) {
     processGetArchiveForEdit(cookie, {});
 }
 
-
-// helpers
-
-function getNiceDate(date) {
-    return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
-}
-
-function getniceDateTime(date) {
-    return (date.getDate().toString() + (date.getMonth()+1).toString() + date.getFullYear().toString() +
-	    date.getHours().toString() + date.getMinutes().toString());
-}
-
-function stateIs(cookie, state) {
-    return (cookie.state === state);
-}
-
-function setState(cookie, state) {
-    cookie.state = state;
-}
-
 function processDownloadInvoices(cookie, content) {
     var playerList = createPlayerList(content);
     if(playerList.length === 0) {
@@ -909,7 +880,7 @@ function processConfirmedEmailSending(cookie, content) {
 	    var team = datastorage.read("teams").teams.map(function(t) {
 		if(player.team === t.color) { return t; }
 	    }).filter(function(f){ return f; })[0];
-	    
+	
 	    pdfData.push({ player: player,
 			   team: team,
 			   invoice: invoice,
@@ -1007,33 +978,10 @@ function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate)
     }
 }
 
-function processHelpScreen(cookie, content) {
-    var content = JSON.parse(Aes.Ctr.decrypt(content, cookie.user.password, 128));
-    servicelog("Client #" + cookie.count + " requests help screen (mode : " + JSON.stringify(content) + " )");
-    if(content.mode === "user") {
-	sendable = { type: "helpText",
-		     content: fs.readFileSync("./" + framework.getLanguageText(cookie,
-								     "HELPFILE_USER"))
-		     .toString("base64") };
-	sendCipherTextToClient(cookie, sendable);
-    } else {
-	sendable = { type: "helpText",
-		     content: fs.readFileSync("./" + framework.getLanguageText(cookie,
-								     "HELPFILE_ADMIN"))
-		     .toString("base64") };
-	sendCipherTextToClient(cookie, sendable);
-    }
-}
-
 function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     if(filename == null) {
 	framework.setStatustoClient(cookie, "No preview available");
         framework.servicelog("No PDF preview available");
-	return;
-    }
-    if(!stateIs(cookie, "loggedIn")) {
-	framework.setStatustoClient(cookie, "Login failure");
-        framework.servicelog("Login failure in PDF preview sending");
 	return;
     }
     try {
@@ -1048,79 +996,6 @@ function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     framework.sendCipherTextToClient(cookie, sendable);
     framework.setStatustoClient(cookie, "OK");
     framework.servicelog("pushed preview PDF to client");
-}
-
-function readUserData() {
-    userData = datastorage.read("users");
-    if(userData === false) {
-	servicelog("User database read failed");
-    }
-    return userData;
- }
-
-function userHasCustomerEditPrivilige(user) {
-    if(user.applicationData.priviliges.length === 0) { return false; }
-    if(user.applicationData.priviliges.indexOf("customer-edit") < 0) { return false; }
-    return true;
-}
-
-function userHasInvoiceEditPrivilige(user) {
-    if(user.applicationData.priviliges.length === 0) { return false; }
-    if(user.applicationData.priviliges.indexOf("invoice-edit") < 0) { return false; }
-    return true;
-}
-
-function userHasSendEmailPrivilige(user) {
-    if(user.applicationData.priviliges.length === 0) { return false; }
-    if(user.applicationData.priviliges.indexOf("email-send") < 0) { return false; }
-    return true;
-}
-
-function getUserPriviliges(user) {
-    if(user.applicationData.priviliges.length === 0) { return []; }
-    if(user.applicationData.priviliges.indexOf("none") > -1) { return []; }
-    return user.applicationData.priviliges;
-}
-
-function getUserByUserName(username) {
-    return readUserData().users.filter(function(u) {
-	return u.username === username;
-    });
-}
-
-function getUserByEmail(email) {
-    return readUserData().users.filter(function(u) {
-	return u.email === email;
-    });
-}
-
-function createAccount(account, accountDefaults) {
-    if(account["password"] === undefined) {
-	servicelog("Received account creation data without password");
-	return false;
-    }
-    var userData = readUserData();
-    if(userData.users.filter(function(u) {
-	return u.username === account.username;
-    }).length !== 0) {
-	servicelog("Cannot create an existing user account");
-	return false;
-    } else {
-	var newAccount = { username: account.username,
-			   hash: sha1.hash(account.username),
-			   password: account.password,
-			   applicationData: accountDefaults };
-	if(account["realname"] !== undefined) { newAccount.realname = account.realname; }
-	if(account["email"] !== undefined) { newAccount.email = account.email; }
-	if(account["phone"] !== undefined) { newAccount.phone = account.phone; }
-	userData.users.push(newAccount);
-	if(datastorage.write("users", userData) === false) {
-	    servicelog("User database write failed");
-	    return false;
-	} else {
-	    return true;
-	}
-    }
 }
 
 function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, billNumber) {
@@ -1185,11 +1060,6 @@ function pushSentEmailZipToClient(cookie, billNumber) {
     });
 
     zipFileStream.on('close', function() {
-	if(!stateIs(cookie, "loggedIn")) {
-	    framework.setStatustoClient(cookie, "Login failure");
-	    framework.servicelog("Login failure in zipfile sending");
-	    return;
-	}
 	try {
 	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
 	} catch(err) {
@@ -1240,21 +1110,24 @@ function pushArchiveFileZiptoClient(cookie, archive) {
 }
 
 
-// ---------
+// helpers
 
+function getNiceDate(date) {
+    return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
+}
 
-function sortByKey(array, key) {
-    return array.sort(function(a, b) {
-        var x = a[key];
-        var y = b[key];
-        if (typeof x == "string") {
-            x = (""+x).toLowerCase();
-        }
-        if (typeof y == "string") {
-            y = (""+y).toLowerCase();
-        }
-        return ((x < y) ? -1 : ((x > y) ? 1 : 0));
-    });
+function getniceDateTime(date) {
+    return (date.getDate().toString() + (date.getMonth()+1).toString() + date.getFullYear().toString() +
+	    date.getHours().toString() + date.getMinutes().toString());
+}
+
+function dueDateToDays(dueDate) {
+    dueDays = 0;
+    if(dueDate === "1 viikko") { dueDays = 7; }
+    if(dueDate === "2 viikkoa") { dueDays = 14; }
+    if(dueDate === "3 viikkoa") { dueDays = 21; }
+    if(dueDate === "4 viikkoa") { dueDays = 28; }
+    return dueDays;
 }
 
 
