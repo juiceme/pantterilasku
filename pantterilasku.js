@@ -668,41 +668,72 @@ function processGetArchiveForEdit(cookie, content) {
 }
 
 function processDownloadArchived(cookie, content) {
-    var items = [];
-    content.items[0].frame.forEach(function(i) {
-	if(i[0][0].checked) {
-	    items.push(i[0][0].key);
-	}
-    });
-    var csvLines = [];
-    datastorage.read("archive").archive.forEach(function(a) {
-	if(items.map(function(i) {
-	    if(a.id === i) { return i; }
-	}).filter(function(f){ return f; }).length !== 0) {
-	    var iList = "";
-	    a.invoice.items.forEach(function(j) {
-		iList = iList.concat(j.description + ";" +
-				     j.count + ";" +
-				     parseFloat(j.price).toFixed(2) + ";" +
-				     parseFloat(j.vat).toFixed(2) + ";");
-	    });
-	    var line = a.number + ";" +
-		a.name + ";" +
-		a.reference + ";" +
-		a.team + ";" +
-		a.date + ";" +
-		a.dueDate + ";" +
-		parseFloat(a.invoice.totalNoVat).toFixed(2) + ";" +
-		parseFloat(a.invoice.totalVat).toFixed(2)  + ";" +
-		parseFloat(a.invoice.totalNoVat + a.invoice.totalVat).toFixed(2) + ";" +
-		iList;
-	    csvLines.push(line);
-	}
-    });
-    pushArchiveFileZiptoClient(cookie, csvLines);
+    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
+	var items = [];
+	content.items[0].frame.forEach(function(i) {
+	    if(i[0][0].checked) {
+		items.push(i[0][0].key);
+	    }
+	});
+	var csvLines = [];
+	datastorage.read("archive").archive.forEach(function(a) {
+	    if(items.map(function(i) {
+		if(a.id === i) { return i; }
+	    }).filter(function(f){ return f; }).length !== 0) {
+		var iList = "";
+		a.invoice.items.forEach(function(j) {
+		    iList = iList.concat(j.description + ";" +
+					 j.count + ";" +
+					 parseFloat(j.price).toFixed(2) + ";" +
+					 parseFloat(j.vat).toFixed(2) + ";");
+		});
+		var line = a.number + ";" +
+		    a.name + ";" +
+		    a.reference + ";" +
+		    a.team + ";" +
+		    a.date + ";" +
+		    a.dueDate + ";" +
+		    parseFloat(a.invoice.totalNoVat).toFixed(2) + ";" +
+		    parseFloat(a.invoice.totalVat).toFixed(2)  + ";" +
+		    parseFloat(a.invoice.totalNoVat + a.invoice.totalVat).toFixed(2) + ";" +
+		    iList;
+		csvLines.push(line);
+	    }
+	});
+	pushArchiveFileZiptoClient(cookie, csvLines);
+    } else {
+  	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
+	sendMainInvoicingPanel(cookie);
+   }
 }
 
 function processDeleteArchived(cookie, content) {
+    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
+	var items = [];
+	content.items[0].frame.forEach(function(i) {
+	    if(i[0][0].checked) {
+		items.push(i[0][0].key);
+	    }
+	});
+	var newArchive = [];
+	var nextId = datastorage.read("archive").nextId;
+	datastorage.read("archive").archive.forEach(function(a) {
+	    if(items.map(function(i) {
+		if(a.id === i) { return i; }
+	    }).filter(function(f){ return f; }).length === 0) {
+		newArchive.push(a);
+	    }
+	});
+	if(datastorage.write("archive", { nextId: nextId, archive: newArchive }) === false) {
+	    framework.servicelog("Updating archive database failed");
+	} else {
+	    framework.servicelog("Updated archive database");
+	}
+    } else {
+  	framework.servicelog("User " + cookie.user.username + " does not have priviliges to delete archived items");
+	sendMainInvoicingPanel(cookie);
+    }
+    processGetArchiveForEdit(cookie, {});
 }
 
 
