@@ -1,9 +1,9 @@
-var framework = require("./framework/framework.js");
+var fw = require("./framework/framework.js");
 var fs = require("fs");
 var email = require("emailjs/email");
 var pdfprinter = require("./pdfprinter");
 var path = require("path");
-var datastorage = require('./datastorage/datastorage.js');
+var ds = require('./datastorage/datastorage.js');
 var archiver = require("archiver");
 var util = require('util')
 
@@ -14,7 +14,7 @@ var databaseVersion = 1;
 
 function handleApplicationMessage(cookie, decryptedMessage) {
 
-//    framework.servicelog("Got message: " + JSON.stringify(decryptedMessage));
+//    fw.servicelog("Got message: " + JSON.stringify(decryptedMessage));
 
     if(decryptedMessage.type === "resetToMain") {
 	processResetToMainState(cookie, decryptedMessage.content); }
@@ -52,7 +52,7 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 	if(decryptedMessage.content.confirmId === "confirm_email_sending") {
 	    processConfirmedEmailSending(cookie, decryptedMessage.content);
 	} else {
-	    framework.servicelog("Received undefined confirm response");
+	    fw.servicelog("Received undefined confirm response");
 	}
     }
 }
@@ -61,7 +61,7 @@ function handleApplicationMessage(cookie, decryptedMessage) {
 // helpers
 
 function getTeams(cookie) {
-    return datastorage.read("access").access.map(function(a) {
+    return ds.read("access").access.map(function(a) {
 	if(a.username === cookie.user.username) {
 	    return a.teams;
 	}
@@ -70,31 +70,31 @@ function getTeams(cookie) {
 
 function getTeamPlayers(team) {
     var players = [];
-    datastorage.read("players").players.forEach(function(p) {
+    ds.read("players").players.forEach(function(p) {
 	if(p.team === team) { players.push(p); }
     });
     return players;
 }
 
 function createClickerElement(id, state, value) {
-    return [ framework.createUiCheckBox("tick", state, "tick", true,
-					"sendToServerEncrypted('itemCountSelectorClicked', { id: " + id + ", state: document.getElementById(this.id).checked } );"),
-	     framework.createUiSelectionList("sel", [1,2,3,4,5,6,7,8,9], value, true, !state, false,
-					     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
+    return [ fw.createUiCheckBox("tick", state, "tick", true,
+				 "sendToServerEncrypted('itemCountSelectorClicked', { id: " + id + ", state: document.getElementById(this.id).checked } );"),
+	     fw.createUiSelectionList("sel", [1,2,3,4,5,6,7,8,9], value, true, !state, false,
+				      "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: parseInt(nSelection.options[nSelection.selectedIndex].value) } );") ];
 }
 
 function createDueDateElement(header, id, value) {
-	var selectorElement = [];
-	if(header) { selectorElement.push(framework.createUiTextNode("due date", "Eräpäivä")); }
-	selectorElement.push(framework.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ],
-							     value, true, false, false,
-							     "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );"));
-	return selectorElement;
+    var selectorElement = [];
+    if(header) { selectorElement.push(fw.createUiTextNode("due date", "Eräpäivä")); }
+    selectorElement.push(fw.createUiSelectionList("sel", ["heti", "1 viikko", "2 viikkoa", "3 viikkoa", "4 viikkoa" ],
+						  value, true, false, false,
+						  "var nSelection = document.getElementById(this.id); sendToServerEncrypted('itemCountSelectorSelected', { id: " + id + ", state: nSelection.options[nSelection.selectedIndex].item } );"));
+    return selectorElement;
 }
 
 function createPreviewLink(count, id, value) {
-    return [ framework.createUiHtmlCell("", "<a href=#>preview</a>", "#ffffff", !value,
-					"sendToServerEncrypted('previewLinkClicked', { count: " + count + ", id: " + id + " } );") ];
+    return [ fw.createUiHtmlCell("", "<a href=#>preview</a>", "#ffffff", !value,
+				 "sendToServerEncrypted('previewLinkClicked', { count: " + count + ", id: " + id + " } );") ];
 }
 
 
@@ -136,8 +136,8 @@ function createTopButtonList(cookie) {
 
 function processResetToMainState(cookie, content) {
     // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel"
-    framework.servicelog("User session reset to main state");
-    cookie.user = datastorage.read("users").users.filter(function(u) {
+    fw.servicelog("User session reset to main state");
+    cookie.user = ds.read("users").users.filter(function(u) {
 	return u.username === cookie.user.username;
     })[0];
     sendMainInvoicingPanel(cookie);
@@ -148,10 +148,10 @@ var mainDataSelectionMap = [];
 var mainInvoiceMap = [];
 
 function sendMainInvoicingPanel(cookie) {
-//    framework.servicelog("My own cookie is: " + util.inspect(cookie));
+//    fw.servicelog("My own cookie is: " + util.inspect(cookie));
     var sendable;
-    var topButtonList = framework.createTopButtons(cookie, [ { button: { text: "Help",
-									 callbackMessage: "getMainHelp" } } ]);
+    var topButtonList = fw.createTopButtons(cookie, [ { button: { text: "Help",
+								  callbackMessage: "getMainHelp" } } ]);
     var players = [];
     teams = getTeams(cookie);
     if(teams.length !== 0) {
@@ -160,7 +160,7 @@ function sendMainInvoicingPanel(cookie) {
 	});
     }
     var invoices = [];
-    datastorage.read("invoices").invoices.forEach(function(i) {
+    ds.read("invoices").invoices.forEach(function(i) {
 	if(i.user === cookie.user.username) { invoices.push(i); }
     });
 
@@ -179,7 +179,7 @@ function sendMainInvoicingPanel(cookie) {
 	}
     }
 
-    var emailText = datastorage.read("access").access.map(function(a) {
+    var emailText = ds.read("access").access.map(function(a) {
 	if(a.username === cookie.user.username) { return a.emailText; }
     }).filter(function(f){ return f; })[0];
 	
@@ -190,13 +190,13 @@ function sendMainInvoicingPanel(cookie) {
 
     var invoiceList = { title: "Laskupohjat",
 			frameId: 1,
-			header: [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ] ] ],
+			header: [ [ [ fw.createUiHtmlCell("", "") ], [ fw.createUiHtmlCell("", "") ] ] ],
 			items: createInvoiceTable(invoices, mainInvoiceMap) };
 
     var emailList = { title: "Sähköpostin saateteksti",
 		      frameId: 2,
 		      header: [ [] ],
-		      items: [ [ [ framework.createUiTextArea("emailText", emailText, 80, 5) ] ] ] };
+		      items: [ [ [ fw.createUiTextArea("emailText", emailText, 80, 5) ] ] ] };
 
     var buttonList = [ { id: 501, text: "Lähetä laskut sähköpostilla!", callbackMessage: "sendInvoicesByEmail" },
 		       { id: 502, text: "Lataa laskut zippitiedostona",  callbackMessage: "downloadInvoices" } ];
@@ -210,14 +210,14 @@ function sendMainInvoicingPanel(cookie) {
 			    frameList: frameList,
 			    buttonList: buttonList } };
 
-    framework.sendCipherTextToClient(cookie, sendable);
+    fw.sendCipherTextToClient(cookie, sendable);
 }
 
 function fillHeaderRows(customers, vMap, sMap) {
-    items = [ [ [ framework.createUiHtmlCell("", "") ], [ framework.createUiHtmlCell("", "") ],
+    items = [ [ [ fw.createUiHtmlCell("", "") ], [ fw.createUiHtmlCell("", "") ],
 		createClickerElement(0, vMap[0], sMap[0]), createClickerElement(1, vMap[1], sMap[1]), createClickerElement(2, vMap[2], sMap[2]),
 		createClickerElement(3, vMap[3], sMap[3]), createClickerElement(4, vMap[4], sMap[4]), createClickerElement(5, vMap[5], sMap[5]),
-		createDueDateElement(true, 6, sMap[6]), [ framework.createUiHtmlCell("", "") ] ] ];
+		createDueDateElement(true, 6, sMap[6]), [ fw.createUiHtmlCell("", "") ] ] ];
     return items;
 }
 
@@ -225,9 +225,9 @@ function createInvoiceTable(invoices, iMap) {
     var items = [];
     var count = 1;
     while(count < 7) {
-	items.push([ [ framework.createUiTextNode("number", count) ],
-		     [ framework.createUiSelectionList("sel", invoices.map(function(i) { return i.id + ". " + i.description; }), iMap[count], true, false, true,
-						       "var nSelection = document.getElementById(this.id); sendToServerEncrypted('invoiceSelectorSelected', { id: " + count + ", state: nSelection.options[nSelection.selectedIndex].item })") ] ] );
+	items.push([ [ fw.createUiTextNode("number", count) ],
+		     [ fw.createUiSelectionList("sel", invoices.map(function(i) { return i.id + ". " + i.description; }), iMap[count], true, false, true,
+						"var nSelection = document.getElementById(this.id); sendToServerEncrypted('invoiceSelectorSelected', { id: " + count + ", state: nSelection.options[nSelection.selectedIndex].item })") ] ] );
 	count ++;
     }
     return items;
@@ -237,12 +237,12 @@ function fillCustomerRows(customers, vMap, sMap) {
     var count = 8
     var items = [];
     customers.forEach(function(c) {
-	items.push( [ [ framework.createUiTextNode(c.id, c.name) ],  [ framework.createUiTextNode("team", c.team) ],
+	items.push( [ [ fw.createUiTextNode(c.id, c.name) ],  [ fw.createUiTextNode("team", c.team) ],
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createClickerElement(count, vMap[count], sMap[count++]), createClickerElement(count, vMap[count], sMap[count++]),
 		      createDueDateElement(false, count, sMap[count++]), createPreviewLink((count-7)/8, c.id, vMap[count++]),
-		      [ framework.createUiHtmlCell("", "") ] ] );
+		      [ fw.createUiHtmlCell("", "") ] ] );
     });
     return items;
 }
@@ -295,15 +295,15 @@ function processLinkClicked(cookie, content) {
 	else { return false; }
     }).filter(function(f){ return f; });
     var dueDays = dueDateToDays(mainDataSelectionMap.slice(content.count * 8, content.count * 8 + 7)[6])
-    var player = datastorage.read("players").players.map(function(q) {
+    var player = ds.read("players").players.map(function(q) {
 	if(q.id === content.id) { return q; }
     }).filter(function(f){ return f; })[0];
-    var team = datastorage.read("teams").teams.map(function(t) {
+    var team = ds.read("teams").teams.map(function(t) {
 	if(player.team === t.color) { return t; }
     }).filter(function(f){ return f; })[0];
     var invoice = [];
     items.forEach(function(i) {
-	invoice.push(datastorage.read("invoices").invoices.map(function(j) {
+	invoice.push(ds.read("invoices").invoices.map(function(j) {
 	    if(j.id === parseInt(i.item.split('.')[0])) {
 		return { item: j,
 			 count: i.count };
@@ -318,7 +318,7 @@ function processLinkClicked(cookie, content) {
     var now = new Date();
     var billNumber = getniceDateTime(now);
     var dueDate = getNiceDate(new Date(now.valueOf()+(60*60*24*1000*dueDays)));
-    framework.setStatustoClient(cookie, "Printing preview");
+    fw.setStatustoClient(cookie, "Printing preview");
     createPdfInvoice(cookie, billNumber++, player, team, invoice, dueDate, "", 0, pushPreviewToClient)
 }
 
@@ -330,12 +330,12 @@ function processInvoiceSelectorSelected(cookie, content) {
 // Teams data editing
 
 function processGetTeamsDataForEdit(cookie, content) {
-    framework.servicelog("Client #" + cookie.count + " requests teams edit");
-    if(framework.userHasPrivilige("teams-edit", cookie.user)) {
-	var topButtonList = framework.createTopButtons(cookie);
+    fw.servicelog("Client #" + cookie.count + " requests teams edit");
+    if(fw.userHasPrivilige("teams-edit", cookie.user)) {
+	var topButtonList = fw.createTopButtons(cookie);
 	var users = [];
-	var access = datastorage.read("access").access;
-	datastorage.read("users").users.forEach(function(u) {
+	var access = ds.read("access").access;
+	ds.read("users").users.forEach(function(u) {
 	    users.push({ user: u.username,
 			 teams: access.map(function(a) {
 			     if(u.username === a.username) { return a.teams; }
@@ -347,40 +347,40 @@ function processGetTeamsDataForEdit(cookie, content) {
 	});
 	var userItems = [];
 	users.forEach(function(u) {
-	    userItems.push([ [ framework.createUiTextNode("username", u.user) ],
-			     [ framework.createUiInputField("teams", u.teams, 15, false) ],
-			     [ framework.createUiInputField("teams", u.emailText, 35, false) ] ]);
+	    userItems.push([ [ fw.createUiTextNode("username", u.user) ],
+			     [ fw.createUiInputField("teams", u.teams, 15, false) ],
+			     [ fw.createUiInputField("teams", u.emailText, 35, false) ] ]);
 	});
 	var userItemList = { title: "Users",
 			     frameId: 0,
-			     header: [ [ [ framework.createUiHtmlCell("", "<b>User</b>") ],
-				       [ framework.createUiHtmlCell("", "<b>Team colors</b>") ] ] ],
+			     header: [ [ [ fw.createUiHtmlCell("", "<b>User</b>") ],
+				       [ fw.createUiHtmlCell("", "<b>Team colors</b>") ] ] ],
 			     items: userItems };
 	var teamItems = [];
-	datastorage.read("teams").teams.forEach(function(t) {
-	    teamItems.push([ [ framework.createUiInputField(t.id, t.color, 15, false) ],
-			     [ framework.createUiInputField("name", t.name, 15, false) ],
-			     [ framework.createUiInputField("address", t.address, 15, false) ],
-			     [ framework.createUiInputField("bank", t.bank, 15, false) ],
-			     [ framework.createUiInputField("iban", t.iban, 15, false) ],
-			     [ framework.createUiInputField("bic", t.bic, 15, false) ] ]);
+	ds.read("teams").teams.forEach(function(t) {
+	    teamItems.push([ [ fw.createUiInputField(t.id, t.color, 15, false) ],
+			     [ fw.createUiInputField("name", t.name, 15, false) ],
+			     [ fw.createUiInputField("address", t.address, 15, false) ],
+			     [ fw.createUiInputField("bank", t.bank, 15, false) ],
+			     [ fw.createUiInputField("iban", t.iban, 15, false) ],
+			     [ fw.createUiInputField("bic", t.bic, 15, false) ] ]);
 	});
 	var teamItemList = { title: "Teams",
 			     frameId: 1,
-			     header: [ [ [ framework.createUiHtmlCell("", "") ],
-					 [ framework.createUiHtmlCell("", "<b>Color</b>") ],
-					 [ framework.createUiHtmlCell("", "<b>Name</b>") ],
-					 [ framework.createUiHtmlCell("", "<b>Address</b>") ],
-					 [ framework.createUiHtmlCell("", "<b>Bank</b>") ],
-					 [ framework.createUiHtmlCell("", "<b>IBAN</b>") ],
-					 [ framework.createUiHtmlCell("", "<b>BIC</b>") ] ] ],
+			     header: [ [ [ fw.createUiHtmlCell("", "") ],
+					 [ fw.createUiHtmlCell("", "<b>Color</b>") ],
+					 [ fw.createUiHtmlCell("", "<b>Name</b>") ],
+					 [ fw.createUiHtmlCell("", "<b>Address</b>") ],
+					 [ fw.createUiHtmlCell("", "<b>Bank</b>") ],
+					 [ fw.createUiHtmlCell("", "<b>IBAN</b>") ],
+					 [ fw.createUiHtmlCell("", "<b>BIC</b>") ] ] ],
 			     items: teamItems,
-			     newItem: [ [ framework.createUiInputField("color", "", 15, false) ],
-					[ framework.createUiInputField("name", "", 15, false) ],
-					[ framework.createUiInputField("address", "", 15, false) ],
-					[ framework.createUiInputField("bank", "", 15, false) ],
-					[ framework.createUiInputField("iban", "", 15, false) ],
-					[ framework.createUiInputField("bic", "", 15, false) ] ] };
+			     newItem: [ [ fw.createUiInputField("color", "", 15, false) ],
+					[ fw.createUiInputField("name", "", 15, false) ],
+					[ fw.createUiInputField("address", "", 15, false) ],
+					[ fw.createUiInputField("bank", "", 15, false) ],
+					[ fw.createUiInputField("iban", "", 15, false) ],
+					[ fw.createUiInputField("bic", "", 15, false) ] ] };
 	var frameList = [ { frameType: "fixedListFrame", frame: userItemList },
 			  { frameType: "editListFrame", frame: teamItemList } ];
 	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllTeamsData" },
@@ -389,16 +389,16 @@ function processGetTeamsDataForEdit(cookie, content) {
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("Sent teams data to client #" + cookie.count);
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("Sent teams data to client #" + cookie.count);
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
 function processSaveAllTeamsData(cookie, content) {
-    if(framework.userHasPrivilige("teams-edit", cookie.user)) {
+    if(fw.userHasPrivilige("teams-edit", cookie.user)) {
 	// reset visibility/selection mappings as customers may change...
 	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
@@ -410,7 +410,7 @@ function processSaveAllTeamsData(cookie, content) {
 			     emailText: u[2][0].value });
 	});
 	newTeams = [];
-	var nextId = datastorage.read("teams").nextId;
+	var nextId = ds.read("teams").nextId;
 	content.items[1].frame.forEach(function(t) {
 	    var id = t[0][0].key;
 	    if(id === "color") { id = nextId++; }
@@ -422,18 +422,18 @@ function processSaveAllTeamsData(cookie, content) {
 			    iban: t[4][0].value,
 			    bic: t[5][0].value });
 	});
-	if(datastorage.write("access", { access: newAccess }) === false) {
-	    framework.servicelog("Updating access database failed");
+	if(ds.write("access", { access: newAccess }) === false) {
+	    fw.servicelog("Updating access database failed");
 	} else {
-	    framework.servicelog("Updated access database");
+	    fw.servicelog("Updated access database");
 	}
-	if(datastorage.write("teams", { nextId: nextId, teams: newTeams }) === false) {
-	    framework.servicelog("Updating teams database failed");
+	if(ds.write("teams", { nextId: nextId, teams: newTeams }) === false) {
+	    fw.servicelog("Updating teams database failed");
 	} else {
-	    framework.servicelog("Updated teams database");
+	    fw.servicelog("Updated teams database");
 	}
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit teams");
     }
     sendMainInvoicingPanel(cookie);
 }
@@ -442,9 +442,9 @@ function processSaveAllTeamsData(cookie, content) {
 // Player data editing
 
 function processGetplayerDataForEdit(cookie, content) {
-    framework.servicelog("Client #" + cookie.count + " requests player edit");
-    if(framework.userHasPrivilige("customer-edit", cookie.user)) {
-	var topButtonList = framework.createTopButtons(cookie);
+    fw.servicelog("Client #" + cookie.count + " requests player edit");
+    if(fw.userHasPrivilige("customer-edit", cookie.user)) {
+	var topButtonList = fw.createTopButtons(cookie);
 	var items = [];
 	var players = [];
 	teams = getTeams(cookie);
@@ -454,29 +454,29 @@ function processGetplayerDataForEdit(cookie, content) {
 	    });
 	}
 	players.forEach(function(p) {
-	    items.push([ [ framework.createUiInputField(p.id, p.name, 15, false) ],
-			 [ framework.createUiInputField("address", p.address, 15, false) ],
-			 [ framework.createUiInputField("detail", p.detail, 15, false) ],
-			 [ framework.createUiInputField("email", p.email, 15, false) ],
-			 [ framework.createUiInputField("bankref", p.reference, 16, false) ],
-			 [ framework.createUiSelectionList("team", teams, p.team, true, false, false) ] ]);
+	    items.push([ [ fw.createUiInputField(p.id, p.name, 15, false) ],
+			 [ fw.createUiInputField("address", p.address, 15, false) ],
+			 [ fw.createUiInputField("detail", p.detail, 15, false) ],
+			 [ fw.createUiInputField("email", p.email, 15, false) ],
+			 [ fw.createUiInputField("bankref", p.reference, 16, false) ],
+			 [ fw.createUiSelectionList("team", teams, p.team, true, false, false) ] ]);
 	});
 	var itemList = { title: "Players",
 			 frameId: 0,
-			 header: [ [ [ framework.createUiHtmlCell("", "") ],
-				     [ framework.createUiHtmlCell("", "<b>Name</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Address</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Detail</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Email</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Bank Reference</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Team</b>") ] ] ],
+			 header: [ [ [ fw.createUiHtmlCell("", "") ],
+				     [ fw.createUiHtmlCell("", "<b>Name</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Address</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Detail</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Email</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Bank Reference</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Team</b>") ] ] ],
 			 items: items,
-			 newItem: [ [ framework.createUiInputField("name", "", 15, false) ],
-				    [ framework.createUiInputField("address", "", 15, false) ],
-				    [ framework.createUiInputField("detail", "", 15, false) ],
-				    [ framework.createUiInputField("email", "", 15, false) ],
-				    [ framework.createUiInputField("bankref", "", 16, false) ],
-				    [ framework.createUiSelectionList("team", teams, 1, true, false, false) ] ] };
+			 newItem: [ [ fw.createUiInputField("name", "", 15, false) ],
+				    [ fw.createUiInputField("address", "", 15, false) ],
+				    [ fw.createUiInputField("detail", "", 15, false) ],
+				    [ fw.createUiInputField("email", "", 15, false) ],
+				    [ fw.createUiInputField("bankref", "", 16, false) ],
+				    [ fw.createUiSelectionList("team", teams, 1, true, false, false) ] ] };
 	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
 	var buttonList = [ { id: 501, text: "OK", callbackMessage: "savePlayerData" },
 			   { id: 502, text: "Cancel",  callbackMessage: "resetToMain" } ];
@@ -484,22 +484,22 @@ function processGetplayerDataForEdit(cookie, content) {
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("Sent player data to client #" + cookie.count);
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("Sent player data to client #" + cookie.count);
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
 function processSavePlayerData(cookie, content) {
-    if(framework.userHasPrivilige("customer-edit", cookie.user)) {
+    if(fw.userHasPrivilige("customer-edit", cookie.user)) {
 	// reset visibility/selection mappings as players may change...
 	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
 	var updatedPlayers = [];
-	var nextId = datastorage.read("players").nextId;
+	var nextId = ds.read("players").nextId;
 	content.items[0].frame.forEach(function(c) {
 	    var id = c[0][0].key;
 	    if(id === "name") { id = nextId++; }
@@ -512,7 +512,7 @@ function processSavePlayerData(cookie, content) {
 				  team: c[5][0].selected });
 	});
 	var newPlayers = [];
-	datastorage.read("players").players.forEach(function(p) {
+	ds.read("players").players.forEach(function(p) {
 	    if(!teams.map(function(t) {
 		return (t === p.team);
 	    }).filter(function(f){ return f; })[0]) {
@@ -522,13 +522,13 @@ function processSavePlayerData(cookie, content) {
 	updatedPlayers.forEach(function(u) {
 	    newPlayers.push(u);
 	});
-	if(datastorage.write("players", { nextId: nextId, players: newPlayers }) === false) {
-	    framework.servicelog("Updating players database failed");
+	if(ds.write("players", { nextId: nextId, players: newPlayers }) === false) {
+	    fw.servicelog("Updating players database failed");
 	} else {
-	    framework.servicelog("Updated players database");
+	    fw.servicelog("Updated players database");
 	}
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit players");
     }
     sendMainInvoicingPanel(cookie);
 }
@@ -537,30 +537,30 @@ function processSavePlayerData(cookie, content) {
 // Invoice data editing
 
 function processGetInvoicesForEdit(cookie, content) {
-    framework.servicelog("Client #" + cookie.count + " requests invoices edit");
-    if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
-	var topButtonList = framework.createTopButtons(cookie);
+    fw.servicelog("Client #" + cookie.count + " requests invoices edit");
+    if(fw.userHasPrivilige("invoice-edit", cookie.user)) {
+	var topButtonList = fw.createTopButtons(cookie);
 	var items = [];
 	var invoices = [];
-	datastorage.read("invoices").invoices.forEach(function(i) {
+	ds.read("invoices").invoices.forEach(function(i) {
 	    if(i.user === cookie.user.username) { invoices.push(i); }
 	});
 	invoices.forEach(function(i) {
-	    items.push([ [ framework.createUiInputField(i.id, i.description, 15, false) ],
-			 [ framework.createUiInputField("price", i.price, 15, false) ],
-			 [ framework.createUiInputField("vat", i.vat, 15, false) ] ]);
+	    items.push([ [ fw.createUiInputField(i.id, i.description, 15, false) ],
+			 [ fw.createUiInputField("price", i.price, 15, false) ],
+			 [ fw.createUiInputField("vat", i.vat, 15, false) ] ]);
 	});
 
 	var itemList = { title: "Invoices",
 			 frameId: 0,
-			 header: [ [ [ framework.createUiHtmlCell("", "") ],
-				     [ framework.createUiHtmlCell("", "<b>Item</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Price w/o taxes</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Vat %</b>") ] ] ],
+			 header: [ [ [ fw.createUiHtmlCell("", "") ],
+				     [ fw.createUiHtmlCell("", "<b>Item</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Price w/o taxes</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Vat %</b>") ] ] ],
 			 items: items,
-			 newItem: [ [ framework.createUiInputField("description", "", 15, false) ],
-				    [ framework.createUiInputField("price", "", 15, false) ],
-				    [ framework.createUiInputField("vat", "", 15, false) ] ] };
+			 newItem: [ [ fw.createUiInputField("description", "", 15, false) ],
+				    [ fw.createUiInputField("price", "", 15, false) ],
+				    [ fw.createUiInputField("vat", "", 15, false) ] ] };
 
 	var frameList = [ { frameType: "editListFrame", frame: itemList } ];
 	var buttonList = [ { id: 501, text: "OK", callbackMessage: "saveAllInvoiceData" },
@@ -570,22 +570,22 @@ function processGetInvoicesForEdit(cookie, content) {
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("Sent invoice data to client #" + cookie.count);
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("Sent invoice data to client #" + cookie.count);
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
 function processSaveAllInvoiceData(cookie, content) {
-    if(framework.userHasPrivilige("invoice-edit", cookie.user)) {
+    if(fw.userHasPrivilige("invoice-edit", cookie.user)) {
 	// reset visibility/selection mappings as customers may change...
 	mainDataVisibilityMap = [];
 	mainDataSelectionMap = [];
 	mainInvoiceMap = [];
 	var newInvoices = [];
-	var nextId = datastorage.read("invoices").nextId;
+	var nextId = ds.read("invoices").nextId;
 	content.items[0].frame.forEach(function(i) {
 	    var id = i[0][0].key;
 	    if(id === "description") { id = nextId++; }
@@ -596,17 +596,17 @@ function processSaveAllInvoiceData(cookie, content) {
 			       user: cookie.user.username });
 	});
 	var allInvoices = [];
-	datastorage.read("invoices").invoices.forEach(function(i) {
+	ds.read("invoices").invoices.forEach(function(i) {
 	    if(i.user !== cookie.user.username) { allInvoices.push(i); }
 	});
 	allInvoices = allInvoices.concat(newInvoices);
-	if(datastorage.write("invoices", { nextId: nextId, invoices: allInvoices }) === false) {
-	    framework.servicelog("Updating invoice database failed");
+	if(ds.write("invoices", { nextId: nextId, invoices: allInvoices }) === false) {
+	    fw.servicelog("Updating invoice database failed");
 	} else {
-	    framework.servicelog("Updated invoice database");
+	    fw.servicelog("Updated invoice database");
 	}
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit invoices");
     }
     sendMainInvoicingPanel(cookie);
 }
@@ -615,32 +615,32 @@ function processSaveAllInvoiceData(cookie, content) {
 // Archived invoices
 
 function processGetArchiveForEdit(cookie, content) {
-    framework.servicelog("Client #" + cookie.count + " requests archives edit");
-    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
-	var topButtonList = framework.createTopButtons(cookie);
+    fw.servicelog("Client #" + cookie.count + " requests archives edit");
+    if(fw.userHasPrivilige("archive-edit", cookie.user)) {
+	var topButtonList = fw.createTopButtons(cookie);
 	var items = [];
 	var invoices = [];
-	datastorage.read("archive").archive.forEach(function(a) {
+	ds.read("archive").archive.forEach(function(a) {
 	    if(a.user === cookie.user.username) { invoices.push(a); }
 	});
 	invoices.forEach(function(i) {
-	    items.push([ [ framework.createUiCheckBox(i.id, false, "tick", true) ],
-			 [ framework.createUiTextNode("bill", i.number) ],
-			 [ framework.createUiTextNode("date", i.date) ],
-			 [ framework.createUiTextNode("due", i.dueDate) ],
-			 [ framework.createUiTextNode("player", i.name) ],
-			 [ framework.createUiTextNode("items", "[ " + i.invoice.items.map(function(i){ return i.id; }) + " ]") ],
-			 [ framework.createUiTextNode("total", (i.invoice.totalNoVat + i.invoice.totalVat).toFixed(2)) ] ]);
+	    items.push([ [ fw.createUiCheckBox(i.id, false, "tick", true) ],
+			 [ fw.createUiTextNode("bill", i.number) ],
+			 [ fw.createUiTextNode("date", i.date) ],
+			 [ fw.createUiTextNode("due", i.dueDate) ],
+			 [ fw.createUiTextNode("player", i.name) ],
+			 [ fw.createUiTextNode("items", "[ " + i.invoice.items.map(function(i){ return i.id; }) + " ]") ],
+			 [ fw.createUiTextNode("total", (i.invoice.totalNoVat + i.invoice.totalVat).toFixed(2)) ] ]);
 	});
 	var itemList = { title: "Invoices",
 			 frameId: 0,
-			 header: [ [ [ framework.createUiHtmlCell("", "<b>Select</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Bill</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Date</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Due</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Player</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Items</b>") ],
-				     [ framework.createUiHtmlCell("", "<b>Total</b>") ] ] ],
+			 header: [ [ [ fw.createUiHtmlCell("", "<b>Select</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Bill</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Date</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Due</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Player</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Items</b>") ],
+				     [ fw.createUiHtmlCell("", "<b>Total</b>") ] ] ],
 			 items: items };
 	var frameList = [ { frameType: "fixedListFrame", frame: itemList } ]
 	var buttonList = [ { id: 501, text: "Lataa valitut laskut zippitiedostona",  callbackMessage: "downloadArchived" },
@@ -650,16 +650,16 @@ function processGetArchiveForEdit(cookie, content) {
 			 content: { topButtonList: topButtonList,
 				    frameList: frameList,
 				    buttonList: buttonList } };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("Sent archive data to client #" + cookie.count);
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("Sent archive data to client #" + cookie.count);
     } else {
- 	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
+ 	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
 	sendMainInvoicingPanel(cookie);
     }
 }
 
 function processDownloadArchived(cookie, content) {
-    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
+    if(fw.userHasPrivilige("archive-edit", cookie.user)) {
 	var items = [];
 	content.items[0].frame.forEach(function(i) {
 	    if(i[0][0].checked) {
@@ -667,7 +667,7 @@ function processDownloadArchived(cookie, content) {
 	    }
 	});
 	var csvLines = [];
-	datastorage.read("archive").archive.forEach(function(a) {
+	ds.read("archive").archive.forEach(function(a) {
 	    if(items.map(function(i) {
 		if(a.id === i) { return i; }
 	    }).filter(function(f){ return f; }).length !== 0) {
@@ -693,13 +693,13 @@ function processDownloadArchived(cookie, content) {
 	});
 	pushArchiveFileZiptoClient(cookie, csvLines);
     } else {
-  	framework.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
+  	fw.servicelog("User " + cookie.user.username + " does not have priviliges to edit archived items");
 	sendMainInvoicingPanel(cookie);
    }
 }
 
 function processDeleteArchived(cookie, content) {
-    if(framework.userHasPrivilige("archive-edit", cookie.user)) {
+    if(fw.userHasPrivilige("archive-edit", cookie.user)) {
 	var items = [];
 	content.items[0].frame.forEach(function(i) {
 	    if(i[0][0].checked) {
@@ -707,21 +707,21 @@ function processDeleteArchived(cookie, content) {
 	    }
 	});
 	var newArchive = [];
-	var nextId = datastorage.read("archive").nextId;
-	datastorage.read("archive").archive.forEach(function(a) {
+	var nextId = ds.read("archive").nextId;
+	ds.read("archive").archive.forEach(function(a) {
 	    if(items.map(function(i) {
 		if(a.id === i) { return i; }
 	    }).filter(function(f){ return f; }).length === 0) {
 		newArchive.push(a);
 	    }
 	});
-	if(datastorage.write("archive", { nextId: nextId, archive: newArchive }) === false) {
-	    framework.servicelog("Updating archive database failed");
+	if(ds.write("archive", { nextId: nextId, archive: newArchive }) === false) {
+	    fw.servicelog("Updating archive database failed");
 	} else {
-	    framework.servicelog("Updated archive database");
+	    fw.servicelog("Updated archive database");
 	}
     } else {
-  	framework.servicelog("User " + cookie.user.username + " does not have priviliges to delete archived items");
+  	fw.servicelog("User " + cookie.user.username + " does not have priviliges to delete archived items");
 	sendMainInvoicingPanel(cookie);
     }
     processGetArchiveForEdit(cookie, {});
@@ -730,7 +730,7 @@ function processDeleteArchived(cookie, content) {
 function processDownloadInvoices(cookie, content) {
     var playerList = createPlayerList(content);
     if(playerList.length === 0) {
-	framework.servicelog("No selections, cancelling pdf downloading");
+	fw.servicelog("No selections, cancelling pdf downloading");
 	return;
     }
     var itemList = []
@@ -742,19 +742,19 @@ function processDownloadInvoices(cookie, content) {
 	}
     });
     if(!flag) {
-	framework.servicelog("No selections, cancelling pdf downloading");
+	fw.servicelog("No selections, cancelling pdf downloading");
 	return;
     }
     cookie.user.applicationData.sentMailList = [];
-    framework.servicelog("Client #" + cookie.count + " requests invoice downloading");
-    framework.setStatustoClient(cookie, "Downloading invoices");
+    fw.servicelog("Client #" + cookie.count + " requests invoice downloading");
+    fw.setStatustoClient(cookie, "Downloading invoices");
     pdfData = [];
     playerList.forEach(function(p) {
 	var invoice = [];
 	var index = 0;
 	itemList.forEach(function(i) {
 	    var item = [];
-	    datastorage.read("invoices").invoices.forEach(function(j) {
+	    ds.read("invoices").invoices.forEach(function(j) {
 		if(j.id === parseInt(i.split('.')[0])) {
 		    if(p.items[index] !== 0) {
 			item.push({ item: j, count: p.items[index] });
@@ -764,10 +764,10 @@ function processDownloadInvoices(cookie, content) {
 	    })
 	    if(item.length !== 0) { invoice.push(item[0]); }
 	});
-	var player = datastorage.read("players").players.map(function(q) {
+	var player = ds.read("players").players.map(function(q) {
 	    if(q.id === p.player) { return q; }
 	}).filter(function(f){ return f; })[0];
-	var team = datastorage.read("teams").teams.map(function(t) {
+	var team = ds.read("teams").teams.map(function(t) {
 	    if(player.team === t.color) { return t; }
 	}).filter(function(f){ return f; })[0];
 	pdfData.push({ player: player,
@@ -807,7 +807,7 @@ function processSendInvoicesByEmail(cookie, content) {
 					     items: itemList,
 					     emailText: emailText };
     var newAccess = [];
-    datastorage.read("access").access.forEach(function(a) {
+    ds.read("access").access.forEach(function(a) {
 	if(a.username !== cookie.user.username) {
 	    newAccess.push(a);
 	} else {
@@ -815,17 +815,17 @@ function processSendInvoicesByEmail(cookie, content) {
 	    newAccess.push(a);
 	}
     });
-    if(datastorage.write("access", { access: newAccess }) === false) {
-	framework.servicelog("Updating access database failed");
+    if(ds.write("access", { access: newAccess }) === false) {
+	fw.servicelog("Updating access database failed");
     } else {
-	framework.servicelog("Updated access database");
+	fw.servicelog("Updated access database");
     }
     var confirmText = "Olet lähettämässä " +
 	playerList.length + " laskua sähköpostilla.\nHaluatko jatkaa?"
     sendable = { type: "confirmBox",
 		 content: { confirmId: "confirm_email_sending",
 			    confirmText: confirmText } };
-    framework.sendCipherTextToClient(cookie, sendable);
+    fw.sendCipherTextToClient(cookie, sendable);
 }
 
 function createPlayerList(content) {
@@ -854,7 +854,7 @@ function processConfirmedEmailSending(cookie, content) {
 	if((cookie.user.applicationData.invoices.players.length) === 0 ||
 	   (cookie.user.applicationData.invoices.items.length === 0)) {
 	    cookie.user.applicationData.invoices = {};
-	    framework.servicelog("No selections, cancelling email sending");
+	    fw.servicelog("No selections, cancelling email sending");
 	    return;
 	}
 	pdfData = [];
@@ -863,7 +863,7 @@ function processConfirmedEmailSending(cookie, content) {
 	    var index = 0;
 	    cookie.user.applicationData.invoices.items.forEach(function(i) {
 		var item = [];
-		datastorage.read("invoices").invoices.forEach(function(j) {
+		ds.read("invoices").invoices.forEach(function(j) {
 		    if(j.id === parseInt(i.split('.')[0])) {
 			if(p.items[index] !== 0) {
 			    item.push({ item: j, count: p.items[index] });
@@ -873,11 +873,11 @@ function processConfirmedEmailSending(cookie, content) {
 		})
 		if(item.length !== 0) {	invoice.push(item[0]); }
 	    });
-	    var player = datastorage.read("players").players.map(function(q) {
+	    var player = ds.read("players").players.map(function(q) {
 		if(q.id === p.player) { return q; }
 	    }).filter(function(f){ return f; })[0];
 	    var emailText = cookie.user.applicationData.invoices.emailText;
-	    var team = datastorage.read("teams").teams.map(function(t) {
+	    var team = ds.read("teams").teams.map(function(t) {
 		if(player.team === t.color) { return t; }
 	    }).filter(function(f){ return f; })[0];
 	
@@ -896,7 +896,7 @@ function processConfirmedEmailSending(cookie, content) {
 	});
     } else {
 	cookie.user.applicationData.invoices = {};
-	framework.servicelog("User has cancelled sending invoice emails");
+	fw.servicelog("User has cancelled sending invoice emails");
     }
 }
 
@@ -922,7 +922,7 @@ function createPdfInvoice(cookie, billNumber, player, team, invoice, dueDate, em
 		 expireDate: dueDate,
 		 notice: "14 vrk." }
     var mailDetails = { text: emailText,
-			from: datastorage.read("email").sender,
+			from: ds.read("email").sender,
 			"reply-to": cookie.user.realname + " <" + cookie.user.email + ">",
 			to: player.email,
 			subject: "Uusi lasku " + team.name + " / " + billNumber,
@@ -931,7 +931,7 @@ function createPdfInvoice(cookie, billNumber, player, team, invoice, dueDate, em
 					name: player.name.replace(" ", "_") + "_" + billNumber + ".pdf" }]};
     pdfprinter.printSheet(callback, cookie, mailDetails, filename, bill, itemizedInvoice, "invoice sending",
 			  totalEmailNumber, billNumber);
-    framework.servicelog("Created PDF document");
+    fw.servicelog("Created PDF document");
 }
 
 function createItemizedInvoice(invoice) {
@@ -957,8 +957,8 @@ function createItemizedInvoice(invoice) {
 
 function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate) {
     var newArchive = [];
-    var nextId = datastorage.read("archive").nextId;
-    datastorage.read("archive").archive.forEach(function(a) {
+    var nextId = ds.read("archive").nextId;
+    ds.read("archive").archive.forEach(function(a) {
 	newArchive.push(a)
     });
     var itemizedInvoice = createItemizedInvoice(invoice);
@@ -971,31 +971,31 @@ function archiveInvoice(cookie, billNumber, player, team, invoice, now, dueDate)
 		      invoice: itemizedInvoice,
 		      date: getNiceDate(now),
 		      dueDate: dueDate });
-    if(datastorage.write("archive", { nextId: nextId, archive: newArchive }) === false) {
-	framework.servicelog("Updating archive database failed");
+    if(ds.write("archive", { nextId: nextId, archive: newArchive }) === false) {
+	fw.servicelog("Updating archive database failed");
     } else {
-	framework.servicelog("Updated archive database");
+	fw.servicelog("Updated archive database");
     }
 }
 
 function pushPreviewToClient(cookie, dummy1, filename, dummy2, dummy3, dummy4) {
     if(filename == null) {
-	framework.setStatustoClient(cookie, "No preview available");
-        framework.servicelog("No PDF preview available");
+	fw.setStatustoClient(cookie, "No preview available");
+        fw.servicelog("No PDF preview available");
 	return;
     }
     try {
 	var pdfFile = fs.readFileSync(filename).toString("base64");
     } catch(err) {
-	framework.servicelog("Failed to load PDF preview file: " + err);
-	framework.setStatustoClient(cookie, "PDF load failure!");
+	fw.servicelog("Failed to load PDF preview file: " + err);
+	fw.setStatustoClient(cookie, "PDF load failure!");
 	return;
     }
     var sendable = { type: "pdfUpload",
 		     content: pdfFile };
-    framework.sendCipherTextToClient(cookie, sendable);
-    framework.setStatustoClient(cookie, "OK");
-    framework.servicelog("pushed preview PDF to client");
+    fw.sendCipherTextToClient(cookie, sendable);
+    fw.setStatustoClient(cookie, "OK");
+    fw.servicelog("pushed preview PDF to client");
 }
 
 function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, billNumber) {
@@ -1006,9 +1006,9 @@ function dontSendEmail(cookie, dummy, filename, logline, totalInvoiceCount, bill
 }
 
 function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, billNumber) {
-    var emailData = datastorage.read("email");
+    var emailData = ds.read("email");
     if(emailData.blindlyTrust) {
-	framework.servicelog("Trusting self-signed certificates");
+	fw.servicelog("Trusting self-signed certificates");
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
     }
     email.server.connect({
@@ -1018,8 +1018,8 @@ function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, bil
 	ssl: emailData.ssl
     }).send(emailDetails, function(err, message) {
 	if(err) {
-	    framework.servicelog(err + " : " + JSON.stringify(message));
-	    framework.setStatustoClient(cookie, "Failed sending email!");
+	    fw.servicelog(err + " : " + JSON.stringify(message));
+	    fw.setStatustoClient(cookie, "Failed sending email!");
 	    if(filename) {
 		var newFilename =  "./failed_invoices/" + path.basename(filename);
 		fs.renameSync(filename, newFilename);
@@ -1029,8 +1029,8 @@ function sendEmail(cookie, emailDetails, filename, logline, totalEmailCount, bil
 		}
 	    }
 	} else {
-	    framework.servicelog("Sent " + logline + " email to " + emailDetails.to);
-	    framework.setStatustoClient(cookie, "Sent email");
+	    fw.servicelog("Sent " + logline + " email to " + emailDetails.to);
+	    fw.setStatustoClient(cookie, "Sent email");
 	    if(filename) {
 		var newFilename =  "./sent_invoices/" + path.basename(filename);
 		fs.renameSync(filename, newFilename);
@@ -1055,7 +1055,7 @@ function pushSentEmailZipToClient(cookie, billNumber) {
     zipFile.finalize();
 
     zipFile.on('error', function(err) {
-	framework.servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
+	fw.servicelog("Error creating invoice zipfile: " + JSON.stringify(err));
 	return;
     });
 
@@ -1063,15 +1063,15 @@ function pushSentEmailZipToClient(cookie, billNumber) {
 	try {
 	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
 	} catch(err) {
-	    framework.servicelog("Failed to load zipfile: " + err);
-	    framework.setStatustoClient(cookie, "zipfile load failure!");
+	    fw.servicelog("Failed to load zipfile: " + err);
+	    fw.setStatustoClient(cookie, "zipfile load failure!");
 	    return;
 	}
 	var sendable = { type: "zipUpload",
 			 content: zipFile };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("pushed email zipfile to client");
-	framework.setStatustoClient(cookie, "OK");
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("pushed email zipfile to client");
+	fw.setStatustoClient(cookie, "OK");
     });
 }
 
@@ -1089,7 +1089,7 @@ function pushArchiveFileZiptoClient(cookie, archive) {
     zipFile.append(fs.createReadStream(archiveFileName), { name: archiveFileName });
     zipFile.finalize();
     zipFile.on('error', function(err) {
-	framework.servicelog("Error creating archive zipfile: " + JSON.stringify(err));
+	fw.servicelog("Error creating archive zipfile: " + JSON.stringify(err));
 	return;
     });
     zipFileStream.on('close', function() {
@@ -1097,15 +1097,15 @@ function pushArchiveFileZiptoClient(cookie, archive) {
 	    fs.unlinkSync(archiveFileName);
 	    var zipFile = fs.readFileSync(zipFileName).toString("base64");
 	} catch(err) {
-	    framework.servicelog("Failed to load zipfile: " + err);
-	    framework.setStatustoClient(cookie, "zipfile load failure!");
+	    fw.servicelog("Failed to load zipfile: " + err);
+	    fw.setStatustoClient(cookie, "zipfile load failure!");
 	    return;
 	}
 	var sendable = { type: "zipUpload",
 			 content: zipFile };
-	framework.sendCipherTextToClient(cookie, sendable);
-	framework.servicelog("pushed archive zipfile to client");
-	framework.setStatustoClient(cookie, "OK");
+	fw.sendCipherTextToClient(cookie, sendable);
+	fw.servicelog("pushed archive zipfile to client");
+	fw.setStatustoClient(cookie, "OK");
     });
 }
 
@@ -1134,11 +1134,11 @@ function dueDateToDays(dueDate) {
 // database conversion and update
 
 function updateDatabaseVersionTo_1() {
-    var mainConfig = datastorage.read("main").main;
-    var userConfig = datastorage.read("users").users;
-    var companyConfig = datastorage.read("company").company;
-    var customersConfig = datastorage.read("customers").customers;
-    var invoicesConfig = datastorage.read("invoices").invoices;
+    var mainConfig = ds.read("main").main;
+    var userConfig = ds.read("users").users;
+    var companyConfig = ds.read("company").company;
+    var customersConfig = ds.read("customers").customers;
+    var invoicesConfig = ds.read("invoices").invoices;
     var nextId;
 
     var newUserConfig = []
@@ -1152,11 +1152,11 @@ function updateDatabaseVersionTo_1() {
 			     language: mainConfig.defaultLanguage,
 			     applicationData: { priviliges: u.applicationData.priviliges } });
     });
-    if(datastorage.write("users", { users: newUserConfig }) === false) {
-	framework.servicelog("Updating user database failed");
+    if(ds.write("users", { users: newUserConfig }) === false) {
+	fw.servicelog("Updating user database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated user database to v.1");
+	fw.servicelog("Updated user database to v.1");
     }
 
     var newAccessConfig = [];
@@ -1165,11 +1165,11 @@ function updateDatabaseVersionTo_1() {
 			       teams: u.applicationData.teams[0],
 			       emailText: u.applicationData.emailText });
     });
-    if(datastorage.write("access", { access: newAccessConfig }) === false) {
-	framework.servicelog("Updating access database failed");
+    if(ds.write("access", { access: newAccessConfig }) === false) {
+	fw.servicelog("Updating access database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated access database to v.1");
+	fw.servicelog("Updated access database to v.1");
     }
 
     var newTeamsConfig = [];
@@ -1183,11 +1183,11 @@ function updateDatabaseVersionTo_1() {
 			      iban: c.iban,
 			      bic: c.bic });
     });
-    if(datastorage.write("teams", { nextId: nextId, teams: newTeamsConfig }) === false) {
-	framework.servicelog("Updating teams database failed");
+    if(ds.write("teams", { nextId: nextId, teams: newTeamsConfig }) === false) {
+	fw.servicelog("Updating teams database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated teams database to v.1");
+	fw.servicelog("Updated teams database to v.1");
     }
 
     var newPlayersConfig = [];
@@ -1201,38 +1201,38 @@ function updateDatabaseVersionTo_1() {
 				reference: c.reference,
 				team: c.team });
     });
-    if(datastorage.write("players", { nextId: nextId, players: newPlayersConfig }) === false) {
-	framework.servicelog("Updating players database failed");
+    if(ds.write("players", { nextId: nextId, players: newPlayersConfig }) === false) {
+	fw.servicelog("Updating players database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated players database to v.1");
+	fw.servicelog("Updated players database to v.1");
     }
 
     var newInvoiceConfig = [];
     nextId = 1;
-    datastorage.read("invoices").invoices.forEach(function(i) {
+    ds.read("invoices").invoices.forEach(function(i) {
 	newInvoiceConfig.push({ id: nextId++,
 				description: i.description,
 				price: i.price,
 				user: i.user,
 				vat: i.vat });
     });
-    if(datastorage.write("invoices", { nextId: nextId, invoices: newInvoiceConfig }) === false) {
-	framework.servicelog("Updating invoices database failed");
+    if(ds.write("invoices", { nextId: nextId, invoices: newInvoiceConfig }) === false) {
+	fw.servicelog("Updating invoices database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated invoices database to v.1");
+	fw.servicelog("Updated invoices database to v.1");
     }
 
-    if(datastorage.write("main", { main: { version: 1,
+    if(ds.write("main", { main: { version: 1,
 					    port: mainConfig.port,
 					    siteFullUrl: mainConfig.siteFullUrl,
 					    emailVerification: false,
 					   defaultLanguage: mainConfig.language } } ) === false) {
-	framework.servicelog("Updating main database failed");
+	fw.servicelog("Updating main database failed");
 	process.exit(1);
     } else {
-	framework.servicelog("Updated main database to v.1");
+	fw.servicelog("Updated main database to v.1");
     }
 }
 
@@ -1247,25 +1247,25 @@ if (!fs.existsSync("./failed_invoices/")){ fs.mkdirSync("./failed_invoices/"); }
 // Initialize application-specific datastorages
 
 function initializeDataStorages() {
-    framework.initializeDataStorages();
-    var mainConfig = datastorage.read("main").main;
+    fw.initializeDataStorages();
+    var mainConfig = ds.read("main").main;
     if(mainConfig.version === undefined) {
 	mainConfig.version = 0;
-	datastorage.initialize("customers", { nextId: 1, customers: [] }, true);
-	datastorage.initialize("company", { nextId: 1, company: [] }, true);
+	ds.initialize("customers", { nextId: 1, customers: [] }, true);
+	ds.initialize("company", { nextId: 1, company: [] }, true);
     }
-    datastorage.initialize("invoices", { nextId: 1, invoices: [] }, true);
-    datastorage.initialize("teams", { nextId: 1, teams: [] }, true);
-    datastorage.initialize("players", { nextId: 1, players: [] }, true);
-    datastorage.initialize("access", { access: [] }, true);
-    datastorage.initialize("archive", { nextId: 1, archive: [] }, true);
+    ds.initialize("invoices", { nextId: 1, invoices: [] }, true);
+    ds.initialize("teams", { nextId: 1, teams: [] }, true);
+    ds.initialize("players", { nextId: 1, players: [] }, true);
+    ds.initialize("access", { access: [] }, true);
+    ds.initialize("archive", { nextId: 1, archive: [] }, true);
 
     if(mainConfig.version > databaseVersion) {
-	framework.servicelog("Database version is too high for this program release, please update program.");
+	fw.servicelog("Database version is too high for this program release, please update program.");
 	process.exit(1);
     }
     if(mainConfig.version < databaseVersion) {
-	framework.servicelog("Updating database version to most recent supported by this program release.");
+	fw.servicelog("Updating database version to most recent supported by this program release.");
 	if(mainConfig.version === 0) {
 	    // update database version from 0 to 1
 	    updateDatabaseVersionTo_1();
@@ -1276,18 +1276,18 @@ function initializeDataStorages() {
 
 // Push callbacks to framework
 
-framework.setCallback("datastorageRead", datastorage.read);
-framework.setCallback("datastorageWrite", datastorage.write);
-framework.setCallback("datastorageInitialize", datastorage.initialize);
-framework.setCallback("handleApplicationMessage", handleApplicationMessage);
-framework.setCallback("processResetToMainState", processResetToMainState);
-framework.setCallback("createAdminPanelUserPriviliges", createAdminPanelUserPriviliges);
-framework.setCallback("createDefaultPriviliges", createDefaultPriviliges);
-framework.setCallback("createTopButtonList", createTopButtonList);
+fw.setCallback("datastorageRead", ds.read);
+fw.setCallback("datastorageWrite", ds.write);
+fw.setCallback("datastorageInitialize", ds.initialize);
+fw.setCallback("handleApplicationMessage", handleApplicationMessage);
+fw.setCallback("processResetToMainState", processResetToMainState);
+fw.setCallback("createAdminPanelUserPriviliges", createAdminPanelUserPriviliges);
+fw.setCallback("createDefaultPriviliges", createDefaultPriviliges);
+fw.setCallback("createTopButtonList", createTopButtonList);
 
 
 // Start the web interface
 
 initializeDataStorages();
-framework.setApplicationName("Pantterilasku");
-framework.startUiLoop();
+fw.setApplicationName("Pantterilasku");
+fw.startUiLoop();
