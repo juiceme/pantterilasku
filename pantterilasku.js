@@ -136,6 +136,10 @@ function createTopButtonList(cookie) {
 
 function processResetToMainState(cookie, content) {
     // this shows up the first UI panel when uses login succeeds or other panels send "OK" / "Cancel"
+    scrollScreenToTop(cookie)
+    mainDataVisibilityMap = [];
+    mainDataSelectionMap = [];
+    mainInvoiceMap = [];
     fw.servicelog("User session reset to main state");
     cookie.user = ds.read("users").users.filter(function(u) {
 	return u.username === cookie.user.username;
@@ -182,7 +186,7 @@ function sendMainInvoicingPanel(cookie) {
     var emailText = ds.read("access").access.map(function(a) {
 	if(a.username === cookie.user.username) { return a.emailText; }
     }).filter(function(f){ return f; })[0];
-	
+
     var customerList = { title: "Pelaajat",
 		       frameId: 0,
 		       header: fillHeaderRows(customers, mainDataVisibilityMap, mainDataSelectionMap),
@@ -1068,6 +1072,11 @@ function pushSentEmailZipToClient(cookie, billNumber) {
 	    fw.setStatustoClient(cookie, "zipfile load failure!");
 	    return;
 	}
+	// remove selevtions and scroll to top
+	mainDataVisibilityMap = [];
+	mainDataSelectionMap = [];
+	mainInvoiceMap = [];
+	scrollScreenToTop(cookie);
 	var sendable = { type: "zipUpload",
 			 content: zipFile };
 	fw.sendCipherTextToClient(cookie, sendable);
@@ -1102,6 +1111,7 @@ function pushArchiveFileZiptoClient(cookie, archive) {
 	    fw.setStatustoClient(cookie, "zipfile load failure!");
 	    return;
 	}
+	scrollScreenToTop(cookie);
 	var sendable = { type: "zipUpload",
 			 content: zipFile };
 	fw.sendCipherTextToClient(cookie, sendable);
@@ -1112,6 +1122,11 @@ function pushArchiveFileZiptoClient(cookie, archive) {
 
 
 // helpers
+
+function scrollScreenToTop(cookie) {
+    var sendable = { type: "scrollToTop", content: {} };
+    fw.sendCipherTextToClient(cookie, sendable);
+}
 
 function getNiceDate(date) {
     return date.getDate() + "." + (date.getMonth()+1) + "." + date.getFullYear();
