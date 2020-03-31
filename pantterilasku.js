@@ -132,6 +132,16 @@ function createTopButtonList(cookie) {
 }
 
 
+// Help text to be shown in the main login panel
+
+function getLoginHelpText1(cookie) {
+    return "1.) Jos sinulla on jo käyttäjätunnus, kirjaudu sisään salasanallasi. 2.) Jos olet uusi käyttäjä, paina [Luo Uusi Tili / Vaihda Salasana] ja syötä sähköpostiosoitteesi. Pantterilasku lähettää sinulle tunnuksen jolla pääset kirjautumaan sisään uuden käyttäjätunnuksen luontiin. Samalla tavalla pääset muokkaamaan käyttäjätietojasi tai vaihtamaan salasanasi. HUOM! Pantterilasku ei lähetä mitään informaatiota selväkielisenä, kaikki liikenne salataan AES128 algoritmilla. Tunnussanoja ei talleteta sellaisenaan, sensijaan käytetään SHA1-tiivisteitä."
+}
+
+function getLoginHelpText2(cookie) {
+    return "1.) Jos haluat luoda uuden käyttäjätunnuksen, olet hukannut salasanasi tai haluat muokata käyttäjätilisi tietoja, anna sähköpostiosoitteesi ja paina nappulaa [Lähetä Sähköposti!]. Järjestelmä lähettää sinulle kertakäyttöisen varmistuskoodin. 2.) Kun saat varmistuskoodin, kirjoita se ylläolevaan kenttään ja paina [Muokkaa Tiliä!] niin pääset muokkaamaan tietojasi."
+}
+
 // Main UI panel, list of customers and invoices
 
 function processResetToMainState(cookie, content) {
@@ -1298,7 +1308,8 @@ fw.setCallback("processResetToMainState", processResetToMainState);
 fw.setCallback("createAdminPanelUserPriviliges", createAdminPanelUserPriviliges);
 fw.setCallback("createDefaultPriviliges", createDefaultPriviliges);
 fw.setCallback("createTopButtonList", createTopButtonList);
-
+fw.setCallback("getLoginHelpText1", getLoginHelpText1);
+fw.setCallback("getLoginHelpText2", getLoginHelpText2);
 
 // Start the web interface
 
